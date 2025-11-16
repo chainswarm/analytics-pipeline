@@ -1,0 +1,108 @@
+{
+  "cycle_detection": {
+    "max_cycle_length": 10,
+    "max_cycles_per_scc": 5,
+    "min_cycle_length": 3,
+    "confidence_score": 0.9,
+    "risk_score_multiplier": 1.2,
+    "volume_severity_weight": 0.4,
+    "length_severity_weight": 0.6,
+    "volume_threshold": 100000
+  },
+  "path_analysis": {
+    "min_path_length": 3,
+    "max_path_length": 8,
+    "max_paths_to_check": 1000,
+    "confidence_score": 0.8,
+    "risk_score_multiplier": 0.9,
+    "high_volume_percentile": 90,
+    "max_source_nodes": 20,
+    "max_target_nodes": 20,
+    "layering_cv_threshold": 0.5,
+    "layering_min_volume": 1000,
+    "layering_length_weight": 0.7,
+    "layering_volume_weight": 0.3,
+    "layering_volume_threshold": 50000
+  },
+  "proximity_analysis": {
+    "max_distance": 3,
+    "confidence_score": 0.6,
+    "base_severity": 0.6,
+    "distance_decay_factor": 1.0
+  },
+  "network_analysis": {
+    "min_community_size": 5,
+    "max_community_size": 50,
+    "confidence_score": 0.7,
+    "risk_score_multiplier": 0.8,
+    "small_transaction_threshold": 10000,
+    "small_transaction_ratio_threshold": 0.7,
+    "density_threshold": 0.3,
+    "density_severity_weight": 0.4,
+    "size_severity_weight": 0.6,
+    "max_size_factor": 20.0,
+    "max_density_factor": 0.5
+  },
+  "motif_detection": {
+    "confidence_score": 0.8,
+    "risk_score_multiplier": 0.6,
+    "base_severity": 0.7,
+    "degree_percentile_threshold": 95,
+    "fanin_max_out_degree": 3,
+    "fanout_max_in_degree": 3
+  },
+  "scc_analysis": {
+    "min_scc_size": 3,
+    "confidence_score": 0.7,
+    "risk_score_multiplier": 0.8,
+    "anomaly_threshold": 0.3,
+    "z_score_normalization": 3.0
+  },
+  "risk_identification": {
+    "high_volume_threshold": 500000,
+    "high_degree_threshold": 20,
+    "heuristic_fallback": true
+  },
+  "severity_adjustments": {
+    "trust_reduction_factor": 0.3,
+    "fraud_increase_factor": 0.5,
+    "trust_risk_modifier": 0.7,
+    "fraud_risk_modifier": 1.5,
+    "unknown_risk_modifier": 1.0
+  },
+  "thresholds": {
+    "volume_thresholds": {
+      "low": 1000,
+      "medium": 10000,
+      "high": 100000,
+      "very_high": 1000000
+    },
+    "severity_bounds": {
+      "min": 0.0,
+      "max": 1.0
+    },
+    "confidence_bounds": {
+      "min": 0.0,
+      "max": 1.0
+    }
+  },
+  "network_specific": {
+    "torus": {
+      "volume_multiplier": 1.0,
+      "severity_adjustment": 0.0
+    },
+    "bittensor": {
+      "volume_multiplier": 1.0,
+      "severity_adjustment": 0.0
+    },
+    "polkadot": {
+      "volume_multiplier": 1.0,
+      "severity_adjustment": 0.0
+    }
+  },
+  "performance": {
+    "enable_caching": true,
+    "max_addresses_per_batch": 10000,
+    "timeout_seconds": 300
+  }
+}

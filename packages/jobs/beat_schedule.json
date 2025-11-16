@@ -1,0 +1,29 @@
+{
+    "_comment": "Analytics Pipeline Beat Schedule - Analytics tasks only",
+    
+    "build-features-daily": {
+        "task": "packages.jobs.tasks.build_features_task.build_features_task",
+        "schedule": "0 2 * * *",
+        "args": ["torus", 1]
+    },
+    "build-features-weekly": {
+        "task": "packages.jobs.tasks.build_features_task.build_features_task",
+        "schedule": "0 3 * * 0",
+        "args": ["torus", 7]
+    },
+    "detect-structural-patterns-daily": {
+        "task": "packages.jobs.tasks.detect_structural_patterns_task.detect_structural_patterns_task",
+        "schedule": "30 2 * * *",
+        "args": ["torus", 1]
+    },
+    "detect-typologies-daily": {
+        "task": "packages.jobs.tasks.detect_typologies_task.detect_typologies_task",
+        "schedule": "0 4 * * *",
+        "args": ["torus", 1]
+    },
+    "initialize-analyzers": {
+        "task": "packages.jobs.tasks.initialize_analyzers_task.initialize_analyzers_task",
+        "schedule": "0 1 1 * *",
+        "args": ["torus"]
+    }
+}

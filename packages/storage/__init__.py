@@ -1,0 +1,1 @@
+DEFAULT_ASSET_CONTRACT = 'native'
