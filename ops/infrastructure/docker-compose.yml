@@ -1,27 +1,42 @@
 version: '3.8'
 
 services:
-  redis:
+
+  infra-analytics-clickhouse:
+    container_name: infra-analytics-clickhouse
+    image: clickhouse/clickhouse-server:latest
+    ports:
+      - "8125:8123"
+      - "9005:9000"
+      - "9015:9009"
+    volumes:
+      - infra-analytics-clickhouse-data:/var/lib/clickhouse
+      - infra-analytics-clickhouse-logs:/var/log/clickhouse-server
+    environment:
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-default}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-user}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-password1234}
+    restart: unless-stopped
+
+  infra-analytics-redis:
     image: redis:7-alpine
-    container_name: analytics-redis
+    container_name: infra-analytics-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
-      - redis-data:/data
+      - infra-analytics-redis-data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  celery-worker:
-    image: analytics-pipeline:latest
-    container_name: analytics-celery-worker
+  infra-analytics-celery-worker:
+    image: infra-analytics-pipeline:latest
+    container_name: infra-analytics-celery-worker
     restart: unless-stopped
     command: celery -A packages.jobs.celery_app worker --loglevel=info --concurrency=2
-    env_file:
-      - ../.env
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
@@ -29,7 +44,7 @@ services:
       - NX_CUGRAPH_AUTOCONFIG=1
       - NX_CUGRAPH_VERBOSE=0
     depends_on:
-      redis:
+      infra-analytics-redis:
         condition: service_healthy
     volumes:
       - ../packages:/app/packages
@@ -42,30 +57,34 @@ services:
               count: 1
               capabilities: [gpu]
 
-  celery-beat:
+  infra-analytics-celery-beat:
     image: analytics-pipeline:latest
-    container_name: analytics-celery-beat
+    container_name: infra-analytics-celery-beat
     restart: unless-stopped
     command: celery -A packages.jobs.celery_app beat --loglevel=info
-    env_file:
-      - ../.env
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - PYTHONUNBUFFERED=1
     depends_on:
-      redis:
+      infra-analytics-redis:
         condition: service_healthy
     volumes:
       - ../packages:/app/packages
       - ../scripts:/app/scripts
-      - celery-beat-data:/app/celerybeat-schedule
+      - infra-analytics-celery-beat-data:/app/celerybeat-schedule
 
 volumes:
-  redis-data:
-    driver: local
-  celery-beat-data:
-    driver: local
+  infra-analytics-redis-data:
+    name: infra-analytics-redis-data
+
+  infra-analytics-celery-beat-data:
+    name: infra-analytics-celery-beat-data
+
+  infra-analytics-clickhouse-data:
+    name: infra-analytics-clickhouse-data
+  infra-analytics-clickhouse-logs:
+    name: infra-analytics-clickhouse-logs
 
 networks:
   default:
