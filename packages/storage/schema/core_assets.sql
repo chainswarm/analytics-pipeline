@@ -1,6 +1,3 @@
-/* =========================
-   ASSETS METADATA (Simple registry of discovered assets)
-   ========================= */
 
 CREATE TABLE IF NOT EXISTS core_assets (
     asset_symbol String,

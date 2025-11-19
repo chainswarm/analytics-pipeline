@@ -1,7 +1,3 @@
-/* =========================
-   ASSET PRICES (per asset_contract)
-   ========================= */
-
 CREATE TABLE IF NOT EXISTS core_asset_prices (
     asset_symbol String,
     asset_contract String DEFAULT 'native',

@@ -34,19 +34,10 @@ def create_database(connection_params):
     client.command(f"CREATE DATABASE IF NOT EXISTS {connection_params['database']}")
 
 def get_connection_params(network: str):
-    # Sanitize network name for DB identifier (e.g. torus-benchmark -> analytics_torus_benchmark)
-    safe_network = network.lower().replace('-', '_')
-    
-    # If CLICKHOUSE_DATABASE is not set, construct specific analytics_{network} db name
-    # This ensures isolation per network variant
-    db_name = os.getenv(f"CLICKHOUSE_DATABASE")
-    if not db_name:
-        db_name = f"analytics_{safe_network}"
-
     connection_params = {
         "host": os.getenv(f"CLICKHOUSE_HOST", "localhost"),
-        "port": os.getenv(f"CLICKHOUSE_PORT", "8123"),
-        "database": db_name,
+        "port": os.getenv(f"CLICKHOUSE_PORT", "8125"),
+        "database": f"analytics_{network}",
         "user": os.getenv(f"CLICKHOUSE_USER", "user"),
         "password": os.getenv(f"CLICKHOUSE_PASSWORD", f"password1234"),
         "max_execution_time": int(os.getenv(f"CLICKHOUSE_MAX_EXECUTION_TIME", "1800")),
@@ -54,25 +45,6 @@ def get_connection_params(network: str):
     }
 
     return connection_params
-
-def get_memgraph_connection_string(network: str):
-    graph_db_url = os.getenv(
-        f"{network.upper()}_MEMGRAPH_URL",
-        f"bolt://localhost:7687"
-    )
-
-    graph_db_user = os.getenv(
-        f"{network.upper()}_MEMGRAPH_USER",
-        "mario"
-    )
-
-    graph_db_password = os.getenv(
-        f"{network.upper()}_MEMGRAPH_PASSWORD",
-        "Mario667!"
-    )
-
-    return graph_db_url, graph_db_user, graph_db_password
-
 
 def truncate_table(client: Client, table_name) -> None:
     client.command(f"TRUNCATE TABLE IF EXISTS {table_name}")
@@ -189,10 +161,10 @@ class MigrateSchema:
     def run_core_migrations(self):
         """Execute core schema migrations (required for ingestion isolation)"""
         core_schemas = [
-            "core_transfers.sql",
-            "core_money_flows.sql",
             "core_assets.sql",
             "core_asset_prices.sql",
+            "core_transfers.sql",
+            "core_money_flows.sql",
             "core_address_labels.sql"
         ]
 
