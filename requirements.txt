@@ -7,8 +7,8 @@ networkx
 numpy
 scipy
 pandas
-scikit-learn>
-cdlib>
+scikit-learn
+cdlib
 python-dotenv
 pydantic>=2.0.0
 
