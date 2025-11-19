@@ -33,22 +33,30 @@ services:
       retries: 5
 
   infra-analytics-celery-worker:
-    image: infra-analytics-pipeline:latest
+    build:
+      context: ../..
+      dockerfile: ops/Dockerfile
     container_name: infra-analytics-celery-worker
     restart: unless-stopped
     command: celery -A packages.jobs.celery_app worker --loglevel=info --concurrency=2
     environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://infra-analytics-redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://infra-analytics-redis:6379/0
       - PYTHONUNBUFFERED=1
       - NX_CUGRAPH_AUTOCONFIG=1
       - NX_CUGRAPH_VERBOSE=0
+      - CLICKHOUSE_HOST=infra-analytics-clickhouse
+      - CLICKHOUSE_PORT=8123
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-user}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-password1234}
     depends_on:
       infra-analytics-redis:
         condition: service_healthy
+      infra-analytics-clickhouse:
+        condition: service_started
     volumes:
-      - ../packages:/app/packages
-      - ../scripts:/app/scripts
+      - ../../packages:/app/packages
+      - ../../scripts:/app/scripts
     deploy:
       resources:
         reservations:
@@ -58,21 +66,53 @@ services:
               capabilities: [gpu]
 
   infra-analytics-celery-beat:
-    image: analytics-pipeline:latest
+    build:
+      context: ../..
+      dockerfile: ops/Dockerfile
     container_name: infra-analytics-celery-beat
     restart: unless-stopped
     command: celery -A packages.jobs.celery_app beat --loglevel=info
     environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://infra-analytics-redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://infra-analytics-redis:6379/0
       - PYTHONUNBUFFERED=1
+      - ANALYTICS_EXECUTION_MODE=daily
     depends_on:
       infra-analytics-redis:
         condition: service_healthy
     volumes:
-      - ../packages:/app/packages
-      - ../scripts:/app/scripts
+      - ../../packages:/app/packages
+      - ../../scripts:/app/scripts
       - infra-analytics-celery-beat-data:/app/celerybeat-schedule
+
+  infra-analytics-api:
+    build:
+      context: ../..
+      dockerfile: ops/Dockerfile
+    container_name: infra-analytics-api
+    restart: unless-stopped
+    command: python scripts/start_api.py
+    ports:
+      - "8001:8001"
+    environment:
+      - ANALYTICS_EXECUTION_MODE=on-demand
+      - API_HOST=0.0.0.0
+      - API_PORT=8001
+      - CELERY_BROKER_URL=redis://infra-analytics-redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://infra-analytics-redis:6379/0
+      - CLICKHOUSE_HOST=infra-analytics-clickhouse
+      - CLICKHOUSE_PORT=8123
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-user}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-password1234}
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      infra-analytics-redis:
+        condition: service_healthy
+      infra-analytics-clickhouse:
+        condition: service_started
+    volumes:
+      - ../../packages:/app/packages
+      - ../../scripts:/app/scripts
 
 volumes:
   infra-analytics-redis-data:

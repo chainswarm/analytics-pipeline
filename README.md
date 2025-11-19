@@ -2,7 +2,7 @@
 
 **Blockchain Analytics and Pattern Detection System**
 
-The Analytics Pipeline is a specialized system extracted from the data-pipeline to handle advanced analytics, feature engineering, and pattern detection on blockchain data.
+The Analytics Pipeline is a specialized system extracted from the data-pipeline to handle advanced analytics, feature engineering, and pattern detection on blockchain data. It supports both automated daily processing and on-demand benchmarking/backfilling.
 
 ## Overview
 
@@ -17,44 +17,23 @@ Analytics Pipeline is a standalone service that provides:
 
 ### Data Access Model
 
-- **Read-Only Access**: Analytics pipeline has read-only access to `core_*` tables from data-pipeline
-- **Owned Tables**: Analytics pipeline owns and manages all `analyzers_*` tables
-- **Complete Independence**: No code dependencies on data-pipeline, fully standalone
+- **Read-Only Access**: Analytics pipeline ingests data from `core_*` tables (conceptually read-only source).
+- **Isolated Storage**: Creates a dedicated ClickHouse database per network (e.g., `analytics_torus`, `analytics_torus_benchmark_1`) to store results.
+- **Complete Independence**: No code dependencies on data-pipeline, fully standalone.
 
 ### Key Components
 
-#### 1. Analyzers (`packages/analyzers/`)
-- **Features**: Graph analytics and address feature computation
-- **Structural Patterns**: Common blockchain pattern detection
-- **Typologies**: Complex multi-hop suspicious activity detection
+#### 1. Job System (`packages/jobs/`)
+- **Celery Integration**: Distributed task processing.
+- **Daily Pipeline**: A consolidated task `DailyAnalyticsPipelineTask` orchestrating ingestion -> features -> patterns -> alerts.
 
-#### 2. Storage Layer (`packages/storage/`)
-- **Schema**: SQL table definitions for all `analyzers_*` tables
-- **Repositories**: Data access layer for features, patterns, alerts, and clusters
+#### 2. API (`packages/api/`)
+- **FastAPI**: Provides HTTP endpoints to trigger on-demand runs for benchmarking or backfills.
+- **Execution Modes**: Supports `daily` (scheduler) and `on-demand` (API) operation modes.
 
-#### 3. Job System (`packages/jobs/`)
-- **Celery Integration**: Distributed task processing
-- **Beat Schedule**: Automated periodic analytics jobs
-- **Tasks**: Feature building, pattern detection, typology detection
-
-#### 4. Utilities (`packages/utils/`)
-- Shared utility functions for decimal handling, decorators, and pattern utilities
-
-## Database Schema
-
-### Analytics-Owned Tables
-
-- `analyzers_features`: Computed blockchain address features
-- `analyzers_pattern_detections`: Detected structural patterns
-- `analyzers_alerts`: Generated security alerts
-- `analyzers_alert_clusters`: Grouped related alerts
-- `analyzers_computation_audit`: Computation tracking and auditing
-
-### Core Tables (Read-Only)
-
-- `core_transfers`: Blockchain transfer events
-- `core_money_flows`: Money flow tracking
-- `core_address_labels`: Address labeling data
+#### 3. Storage Layer (`packages/storage/`)
+- **Repositories**: Data access for features, patterns, alerts.
+- **Schema Migration**: Auto-migrates schemas to the target isolated database.
 
 ## Configuration
 
@@ -63,27 +42,25 @@ Analytics Pipeline is a standalone service that provides:
 Copy `.env.example` to `.env` and configure:
 
 ```bash
+# Execution Mode: 'daily' (starts Scheduler) or 'on-demand' (starts API)
+ANALYTICS_EXECUTION_MODE=on-demand
+
+# API Configuration
+API_HOST=0.0.0.0
+API_PORT=8001
+
 # ClickHouse Database
 CLICKHOUSE_HOST=localhost
-CLICKHOUSE_PORT=9000
+CLICKHOUSE_PORT=8123
 CLICKHOUSE_USER=default
-CLICKHOUSE_PASSWORD=
-CLICKHOUSE_DATABASE=blockchain
+CLICKHOUSE_PASSWORD=password1234
+# Note: Database name is dynamic (analytics_{network}), this var is base/default
 
 # Celery/Redis
-CELERY_BROKER_URL=redis://localhost:6379/0
-CELERY_RESULT_BACKEND=redis://localhost:6379/0
+REDIS_URL=redis://localhost:6379/0
 
 # Network
 NETWORK=torus
-
-# Processing
-WINDOW_DAYS=180
-BATCH_SIZE=1000
-CHUNK_SIZE=10000
-
-# Logging
-LOG_LEVEL=INFO
 ```
 
 ## Installation
@@ -99,103 +76,72 @@ cp .env.example .env
 
 ## Usage
 
-### Running Analytics Tasks
+### 1. On-Demand Execution (API)
 
-#### Feature Building
+Run the API server:
 ```bash
-# Build features for specific time window
-python -m packages.jobs.tasks.build_features_task --network torus --days 7
+python scripts/start_api.py
 ```
-
-#### Structural Pattern Detection
+Trigger a pipeline run:
 ```bash
-# Detect structural patterns
-python -m packages.jobs.tasks.detect_structural_patterns_task --network torus --days 7
+curl -X POST "http://localhost:8001/api/v1/pipelines/run" \
+     -H "Content-Type: application/json" \
+     -d '{
+           "network": "torus-benchmark-1",
+           "date_range": {
+             "start_date": "2023-10-01",
+             "end_date": "2023-10-05"
+           },
+           "window_days": 1
+         }'
 ```
+This will ingest data into `analytics_torus_benchmark_1` database and run all analytics steps isolated from production.
 
-#### Typology Detection
+### 2. Automated Daily Execution (Celery Beat)
+
+Set `ANALYTICS_EXECUTION_MODE=daily` and run:
 ```bash
-# Detect complex typologies
-python -m packages.jobs.tasks.detect_typologies_task --network torus --days 7
-```
-
-### Running Celery Workers
-
-```bash
-# Start Celery worker
-celery -A packages.jobs.celery_app worker --loglevel=info
-
-# Start Celery beat scheduler (for periodic tasks)
+# Start Scheduler
 celery -A packages.jobs.celery_app beat --loglevel=info
+
+# Start Worker (required for both modes)
+celery -A packages.jobs.celery_app worker --loglevel=info
 ```
+
+The scheduler uses `packages/jobs/beat_schedule.json` to trigger the `DailyAnalyticsPipelineTask` every day.
+
+### 3. Docker Support
+
+Run the full stack:
+```bash
+cd ops/infrastructure
+docker-compose up -d
+```
+This starts:
+- Read/Write ClickHouse
+- Redis
+- Celery Worker
+- Celery Beat (Scheduler)
+- API Server
 
 ## Project Structure
 
 ```
 analytics-pipeline/
 ├── packages/
+│   ├── api/                # REST API for on-demand control
 │   ├── analyzers/          # Analytics engines
-│   │   ├── features/       # Feature engineering
-│   │   ├── structural/     # Structural pattern detection
-│   │   └── typologies/     # Typology detection
-│   ├── storage/            # Data access layer
-│   │   ├── repositories/   # Repository classes
-│   │   └── schema/         # SQL table definitions
-│   ├── jobs/               # Celery task system
-│   │   ├── base/           # Base task classes
-│   │   └── tasks/          # Analytics tasks
-│   └── utils/              # Shared utilities
+│   ├── storage/            # Data access & Schemas
+│   ├── jobs/               # Celery tasks
+│   │   └── tasks/          # Daily pipeline & sub-tasks
+│   └── ingestion/          # Data ingestion logic
 ├── scripts/
-│   └── tasks/              # Standalone task scripts
+│   └── start_api.py        # API startup script
 ├── ops/                    # Operations & deployment
-├── tests/                  # Test suite
-│   └── integration/
-│       └── analyzers/
-├── docs/                   # Documentation
-├── .env.example            # Environment configuration template
-├── requirements.txt        # Python dependencies
-└── pytest.ini             # Test configuration
+├── .env.example            # Environment template
+└── requirements.txt        # Dependencies
 ```
-
-## Development
-
-### Running Tests
-
-```bash
-# Run all tests
-pytest
-
-# Run specific test module
-pytest tests/integration/analyzers/
-
-# Run with coverage
-pytest --cov=packages
-```
-
-### Code Style
-
-The project follows the same conventions as data-pipeline:
-- Python 3.9+
-- Type hints where appropriate
-- Docstrings for public methods
-- PEP 8 code style
-
-## Deployment
-
-See `ops/` directory for deployment configurations and Docker setups.
-
-## Integration with Data Pipeline
-
-While analytics-pipeline is completely independent code-wise:
-
-1. **Data Flow**: Reads blockchain data from `core_*` tables populated by data-pipeline
-2. **Schema Coordination**: Uses compatible data types and conventions
-3. **Network Support**: Supports same blockchain networks (Torus, Bittensor, Bitcoin, etc.)
 
 ## License
 
 See LICENSE file for details.
-
-## Support
-
-For issues and questions, please refer to the documentation in the `docs/` directory.

@@ -28,6 +28,11 @@ from .log_computation_audit_task import (
     LogComputationAuditTask
 )
 
+from .daily_analytics_pipeline_task import (
+    daily_analytics_pipeline_task,
+    DailyAnalyticsPipelineTask
+)
+
 __all__ = [
     # Celery tasks
     'build_features_task',
@@ -35,6 +40,7 @@ __all__ = [
     'detect_typologies_task',
     'initialize_analyzers_task',
     'log_computation_audit_task',
+    'daily_analytics_pipeline_task',
 
     # Task Classes
     'BuildFeaturesTask',
@@ -42,4 +48,5 @@ __all__ = [
     'DetectTypologiesTask',
     'InitializeAnalyzersTask',
     'LogComputationAuditTask',
+    'DailyAnalyticsPipelineTask',
 ]

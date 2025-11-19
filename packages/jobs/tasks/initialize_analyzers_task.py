@@ -14,10 +14,22 @@ class InitializeAnalyzersTask(BaseDataPipelineTask, Singleton):
         service_name = f'analytics-{context.network}-initialize-analyzers'
         setup_logger(service_name)
 
+        # 1. Get params (which now defaults to analytics_{network})
         connection_params = get_connection_params(context.network)
+        
+        # 2. Ensure Database Exists (connects to default DB to create target)
+        from packages.storage.repositories import create_database
+        create_database(connection_params)
+        
+        # 3. Connect to target DB and run migrations
         client_factory = ClientFactory(connection_params)
         with client_factory.client_context() as client:
             migrate_schema = MigrateSchema(client)
+            
+            # Run core migrations first (for independent ingestion/isolation)
+            migrate_schema.run_core_migrations()
+            
+            # Run analyzer migrations
             migrate_schema.run_analyzer_migrations()
 
 

@@ -9,12 +9,9 @@ from clickhouse_connect.driver.exceptions import ClickHouseError
 from loguru import logger
 
 from packages.storage.repositories.alerts_repository import AlertsRepository
-from packages.storage.repositories.alert_graph_repository import AlertGraphRepository
 from packages.storage.repositories.base_repository import BaseRepository
 from packages.storage.repositories.feature_repository import FeatureRepository
 from packages.storage.repositories.alert_cluster_repository import AlertClusterRepository
-from packages.storage.repositories.batch_metadata_repository import BatchMetadataRepository
-from packages.storage.repositories.alert_observations_repository import AlertObservationsRepository
 from packages.storage.repositories.computation_audit_repository import ComputationAuditRepository
 
 def create_database(connection_params):
@@ -37,10 +34,19 @@ def create_database(connection_params):
     client.command(f"CREATE DATABASE IF NOT EXISTS {connection_params['database']}")
 
 def get_connection_params(network: str):
+    # Sanitize network name for DB identifier (e.g. torus-benchmark -> analytics_torus_benchmark)
+    safe_network = network.lower().replace('-', '_')
+    
+    # If CLICKHOUSE_DATABASE is not set, construct specific analytics_{network} db name
+    # This ensures isolation per network variant
+    db_name = os.getenv(f"CLICKHOUSE_DATABASE")
+    if not db_name:
+        db_name = f"analytics_{safe_network}"
+
     connection_params = {
         "host": os.getenv(f"CLICKHOUSE_HOST", "localhost"),
         "port": os.getenv(f"CLICKHOUSE_PORT", "8123"),
-        "database": os.getenv(f"CLICKHOUSE_DATABASE", f"{network.lower()}"),
+        "database": db_name,
         "user": os.getenv(f"CLICKHOUSE_USER", "user"),
         "password": os.getenv(f"CLICKHOUSE_PASSWORD", f"password1234"),
         "max_execution_time": int(os.getenv(f"CLICKHOUSE_MAX_EXECUTION_TIME", "1800")),
@@ -179,6 +185,23 @@ class MigrateSchema:
     
     def __init__(self, client: Client):
         self.client = client
+
+    def run_core_migrations(self):
+        """Execute core schema migrations (required for ingestion isolation)"""
+        core_schemas = [
+            "core_transfers.sql",
+            "core_money_flows.sql",
+            "core_assets.sql",
+            "core_asset_prices.sql",
+            "core_address_labels.sql"
+        ]
+
+        for schema_file in core_schemas:
+            try:
+                apply_schema(self.client, schema_file)
+                logger.info(f"Executed core schema {schema_file}")
+            except FileNotFoundError:
+                logger.warning(f"Core schema {schema_file} not found, skipping")
 
     def run_analyzer_migrations(self):
         """Execute analyzer schemas for analytics pipeline"""

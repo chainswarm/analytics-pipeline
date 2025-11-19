@@ -20,3 +20,7 @@ fastapi
 pandas
 pyarrow
 uvicorn
+
+prometheus-client
+
+boto3

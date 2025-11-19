@@ -9,6 +9,7 @@ from packages.ingestion.extractors.s3_extractor import S3Extractor
 from packages.ingestion.extractors.clickhouse_extractor import ClickHouseExtractor
 from packages.ingestion.extractors.http_extractor import HttpExtractor
 from packages.ingestion.loaders.parquet_loader import ParquetLoader
+from packages.utils import calculate_time_window
 
 class IngestionService:
     """Orchestrates the data ingestion process."""
@@ -17,6 +18,35 @@ class IngestionService:
         self.client = client
         self.ingestion_source = ingestion_source.upper()
         self.loader = ParquetLoader(client)
+
+    def _cleanup_core_data(self, start_timestamp: int, end_timestamp: int):
+        """
+        Cleans up data in core tables for the specified time range to ensure idempotency.
+        """
+        logger.info(f"Cleaning core data for range {start_timestamp} to {end_timestamp}")
+        
+        # Tables that need cleanup based on timestamp
+        tables_map = {
+            'core_transfers': 'block_timestamp',
+            'core_money_flows_mv': 'last_seen_timestamp', # Approximation
+            # core_assets and prices might be trickier, usually distinct by ID/Date
+        }
+
+        for table, time_col in tables_map.items():
+            try:
+                # Check if table exists
+                exists_query = f"EXISTS TABLE {table}"
+                if not self.client.query(exists_query).result_rows[0][0]:
+                    continue
+
+                query = f"""
+                ALTER TABLE {table}
+                DELETE WHERE {time_col} >= {start_timestamp} AND {time_col} <= {end_timestamp}
+                """
+                self.client.command(query)
+                logger.info(f"Initiated cleanup for {table}")
+            except Exception as e:
+                logger.warning(f"Cleanup failed for {table}: {e}")
 
     def run(self, network: str, processing_date: str, window_days: int):
         """
@@ -37,6 +67,12 @@ class IngestionService:
                 return
 
             try:
+                # Calculate time window for cleanup
+                start_timestamp, end_timestamp = calculate_time_window(window_days, processing_date)
+                
+                # Cleanup existing data before ingestion
+                self._cleanup_core_data(start_timestamp, end_timestamp)
+
                 output_path = extractor.extract(network, processing_date, window_days)
                 
                 logger.info(f"Extraction complete. Loading data from {output_path}")
