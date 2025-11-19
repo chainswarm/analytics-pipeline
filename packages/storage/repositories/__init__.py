@@ -1,1 +1,196 @@
-"""Analytics Pipeline - Storage Repositories Module"""
+import io
+import os
+from contextlib import contextmanager
+from pathlib import Path
+from typing import Iterator, Iterable
+from clickhouse_connect import get_client
+from clickhouse_connect.driver import Client
+from clickhouse_connect.driver.exceptions import ClickHouseError
+from loguru import logger
+
+from packages.storage.repositories.alerts_repository import AlertsRepository
+from packages.storage.repositories.alert_graph_repository import AlertGraphRepository
+from packages.storage.repositories.base_repository import BaseRepository
+from packages.storage.repositories.feature_repository import FeatureRepository
+from packages.storage.repositories.alert_cluster_repository import AlertClusterRepository
+from packages.storage.repositories.batch_metadata_repository import BatchMetadataRepository
+from packages.storage.repositories.alert_observations_repository import AlertObservationsRepository
+from packages.storage.repositories.computation_audit_repository import ComputationAuditRepository
+
+def create_database(connection_params):
+    client = get_client(
+        host=connection_params['host'],
+        port=int(connection_params['port']),
+        username=connection_params['user'],
+        password=connection_params['password'],
+        database='default',
+        settings={
+            'enable_http_compression': 1,
+            'send_progress_in_http_headers': 0,
+            'http_headers_progress_interval_ms': 1000,
+            'http_zlib_compression_level': 3,
+            'max_execution_time': connection_params.get('max_execution_time', 3600),
+            "max_query_size": connection_params.get('max_query_size', 5000000)
+        }
+    )
+
+    client.command(f"CREATE DATABASE IF NOT EXISTS {connection_params['database']}")
+
+def get_connection_params(network: str):
+    connection_params = {
+        "host": os.getenv(f"CLICKHOUSE_HOST", "localhost"),
+        "port": os.getenv(f"CLICKHOUSE_PORT", "8123"),
+        "database": os.getenv(f"CLICKHOUSE_DATABASE", f"{network.lower()}"),
+        "user": os.getenv(f"CLICKHOUSE_USER", "user"),
+        "password": os.getenv(f"CLICKHOUSE_PASSWORD", f"password1234"),
+        "max_execution_time": int(os.getenv(f"CLICKHOUSE_MAX_EXECUTION_TIME", "1800")),
+        "max_query_size": int(os.getenv(f"CLICKHOUSE_MAX_QUERY_SIZE", "5000000")),
+    }
+
+    return connection_params
+
+def get_memgraph_connection_string(network: str):
+    graph_db_url = os.getenv(
+        f"{network.upper()}_MEMGRAPH_URL",
+        f"bolt://localhost:7687"
+    )
+
+    graph_db_user = os.getenv(
+        f"{network.upper()}_MEMGRAPH_USER",
+        "mario"
+    )
+
+    graph_db_password = os.getenv(
+        f"{network.upper()}_MEMGRAPH_PASSWORD",
+        "Mario667!"
+    )
+
+    return graph_db_url, graph_db_user, graph_db_password
+
+
+def truncate_table(client: Client, table_name) -> None:
+    client.command(f"TRUNCATE TABLE IF EXISTS {table_name}")
+
+def apply_schema(client: Client, schema: str, replacements: dict = None):
+    def _split_clickhouse_sql(sql_text: str) -> Iterable[str]:
+        cleaned = io.StringIO()
+        for line in sql_text.splitlines():
+            if line.strip().startswith("--"):
+                continue
+            parts = line.split("--", 1)
+            cleaned.write(parts[0] + "\n")
+
+        buf = []
+        for ch in cleaned.getvalue():
+            if ch == ";":
+                stmt = "".join(buf).strip()
+                if stmt:
+                    yield stmt
+                buf = []
+            else:
+                buf.append(ch)
+
+        tail = "".join(buf).strip()
+        if tail:
+            yield tail
+
+    schema_path = Path(__file__).resolve().parents[1] / "schema" / schema
+    path = Path(schema_path)
+    if not path.exists():
+        raise FileNotFoundError(f"schema {schema} does not exist")
+
+    raw = path.read_text(encoding="utf-8")
+
+    statements = list(_split_clickhouse_sql(raw))
+    if not statements:
+        return
+
+    for i, stmt in enumerate(statements, 1):
+        client.command(stmt)
+
+class ClientFactory:
+    client: Client = None
+
+    def __init__(self, connection_params) -> None:
+        self.connection_params = connection_params
+
+    def _get_client(self) -> Client:
+        self.client = get_client(
+            host=self.connection_params['host'],
+            port=int(self.connection_params['port']),
+            username=self.connection_params['user'],
+            password=self.connection_params['password'],
+            database=self.connection_params['database'],
+            settings={
+                'output_format_parquet_compression_method': 'zstd',
+                'async_insert': 0,
+                'wait_for_async_insert': 1,
+                'max_execution_time': 300,
+                'max_execution_time': self.connection_params.get('max_execution_time', 3600),
+                "max_query_size": self.connection_params.get('max_query_size', 5000000)
+            }
+
+        )
+        return self.client
+
+    def _get_client_default_database(self) -> Client:
+        client = get_client(
+            host=self.connection_params['host'],
+            port=int(self.connection_params['port']),
+            username=self.connection_params['user'],
+            password=self.connection_params['password'],
+            database='default',
+            settings={
+                'output_format_parquet_compression_method': 'zstd',
+                'max_execution_time': self.connection_params.get('max_execution_time', 3600),
+                "max_query_size": self.connection_params.get('max_query_size', 5000000),
+
+                'enable_http_compression': 1,
+                'send_progress_in_http_headers': 0,
+                'http_headers_progress_interval_ms': 1000,
+                'http_zlib_compression_level': 3,
+            },
+            client_query_params={
+                'default_format': 'JSON',
+                'result_format': 'JSON'
+            }
+        )
+        return client
+
+    @contextmanager
+    def client_context(self) -> Iterator[Client]:
+        client = self._get_client()
+        try:
+            yield client
+        except ClickHouseError as e:
+            import traceback
+            logger.error(
+                "ClickHouse error",
+                error = e,
+                traceback = traceback.format_exc(),
+            )
+            raise
+        finally:
+            if client:
+                client.close()
+
+class MigrateSchema:
+    """ClickHouse schema migration manager for analytics pipeline"""
+    
+    def __init__(self, client: Client):
+        self.client = client
+
+    def run_analyzer_migrations(self):
+        """Execute analyzer schemas for analytics pipeline"""
+        
+        analyzer_schemas = [
+            "analyzers_features.sql",
+            "analyzers_alerts.sql",
+            "analyzers_pattern_detections.sql",
+            "analyzers_alert_clusters.sql",
+            "analyzers_computation_audit.sql",
+        ]
+        
+        for schema_file in analyzer_schemas:
+            apply_schema(self.client, schema_file)
+            logger.info(f"Executed {schema_file}")
