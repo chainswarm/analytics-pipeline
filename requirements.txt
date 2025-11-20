@@ -27,3 +27,9 @@ boto3
 
  igraph
  leidenalg
+# Notebook Integration
+jupyterlab
+matplotlib
+seaborn
+plotly
+pyvis
