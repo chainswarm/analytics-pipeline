@@ -2,6 +2,8 @@
 import os
 import argparse
 from dotenv import load_dotenv
+from loguru import logger
+
 from packages.jobs.tasks.ingest_batch_task import IngestBatchTask
 from packages.jobs.base.task_models import BaseTaskContext
 
@@ -18,7 +20,7 @@ def main():
     
     if args.source:
         os.environ['INGESTION_SOURCE_TYPE'] = args.source
-        print(f"Overriding INGESTION_SOURCE_TYPE to {args.source}")
+        logger.debug(f"Overriding INGESTION_SOURCE_TYPE to {args.source}")
     
     context = BaseTaskContext(
         network=args.network,

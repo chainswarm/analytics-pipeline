@@ -78,24 +78,3 @@ ALTER TABLE analyzers_pattern_detections ADD INDEX IF NOT EXISTS idx_pattern_typ
 ALTER TABLE analyzers_pattern_detections ADD INDEX IF NOT EXISTS idx_pattern_id pattern_id TYPE bloom_filter(0.01) GRANULARITY 4;
 ALTER TABLE analyzers_pattern_detections ADD INDEX IF NOT EXISTS idx_severity_score severity_score TYPE minmax GRANULARITY 4;
 ALTER TABLE analyzers_pattern_detections ADD INDEX IF NOT EXISTS idx_risk_score risk_score TYPE minmax GRANULARITY 4;
-
-CREATE MATERIALIZED VIEW IF NOT EXISTS analyzers_pattern_address_mv
-ENGINE = ReplacingMergeTree(_version)
-PARTITION BY toYYYYMM(processing_date)
-ORDER BY (window_days, processing_date, address, pattern_type, pattern_id)
-SETTINGS index_granularity = 8192
-AS SELECT
-    window_days,
-    processing_date,
-    pattern_id,
-    pattern_type,
-    arrayJoin(addresses_involved) as address,
-    arrayElement(
-        address_roles,
-        arrayFirstIndex(x -> x = arrayJoin(addresses_involved), addresses_involved)
-    ) as role,
-    severity_score,
-    confidence_score,
-    risk_score,
-    _version
-FROM analyzers_pattern_detections;

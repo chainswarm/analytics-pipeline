@@ -19,34 +19,39 @@ class IngestionService:
         self.ingestion_source = ingestion_source.upper()
         self.loader = ParquetLoader(client)
 
-    def _cleanup_core_data(self, start_timestamp: int, end_timestamp: int):
+    def _truncate_core_tables(self):
         """
-        Cleans up data in core tables for the specified time range to ensure idempotency.
+        Truncates core tables and materialized views to prepare for full ingestion.
+        This ensures a clean state and that MVs (like money_flows) are rebuilt correctly on insert.
         """
-        logger.info(f"Cleaning core data for range {start_timestamp} to {end_timestamp}")
-        
-        # Tables that need cleanup based on timestamp
-        tables_map = {
-            'core_transfers': 'block_timestamp',
-            'core_money_flows_mv': 'last_seen_timestamp', # Approximation
-            # core_assets and prices might be trickier, usually distinct by ID/Date
-        }
+        logger.info("Truncating core tables and materialized views...")
 
-        for table, time_col in tables_map.items():
+        tables_to_truncate = [
+            # Base tables
+            'core_transfers',
+            'core_assets',
+            'core_asset_prices',
+            'core_address_labels',
+
+            # Materialized Views (must also be truncated so they don't hold old data)
+            'core_money_flows_mv',
+            'core_money_flows_daily_mv',
+            'core_money_flows_weekly_mv'
+        ]
+
+        for table in tables_to_truncate:
             try:
                 # Check if table exists
                 exists_query = f"EXISTS TABLE {table}"
                 if not self.client.query(exists_query).result_rows[0][0]:
+                    logger.debug(f"Skipping truncate for {table} (not found)")
                     continue
 
-                query = f"""
-                ALTER TABLE {table}
-                DELETE WHERE {time_col} >= {start_timestamp} AND {time_col} <= {end_timestamp}
-                """
+                query = f"TRUNCATE TABLE {table}"
                 self.client.command(query)
-                logger.info(f"Initiated cleanup for {table}")
+                logger.info(f"Truncated {table}")
             except Exception as e:
-                logger.warning(f"Cleanup failed for {table}: {e}")
+                logger.warning(f"Truncate failed for {table}: {e}")
 
     def run(self, network: str, processing_date: str, window_days: int):
         """
@@ -63,15 +68,11 @@ class IngestionService:
             
             extractor = self._get_extractor(temp_path)
             if not extractor:
-                logger.error(f"Unknown ingestion source: {self.ingestion_source}")
-                return
+                raise ValueError(f"Unknown ingestion source {self.ingestion_source}")
 
             try:
-                # Calculate time window for cleanup
-                start_timestamp, end_timestamp = calculate_time_window(window_days, processing_date)
-                
-                # Cleanup existing data before ingestion
-                self._cleanup_core_data(start_timestamp, end_timestamp)
+                # Truncate tables before ingestion (replacing time-window cleanup)
+                self._truncate_core_tables()
 
                 output_path = extractor.extract(network, processing_date, window_days)
                 

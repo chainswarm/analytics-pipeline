@@ -2,6 +2,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from packages.api.routes import router
+from packages.api.routers import export
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -19,6 +20,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(router, prefix="/api/v1", tags=["pipelines"])
+    app.include_router(export.router, prefix="/api/v1", tags=["export"])
 
     @app.get("/health")
     async def health_check():

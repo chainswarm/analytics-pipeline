@@ -11,11 +11,6 @@ from .detect_structural_patterns_task import (
     DetectStructuralPatternsTask
 )
 
-from .detect_typologies_task import (
-    detect_typologies_task,
-    DetectTypologiesTask
-)
-
 # Initialize Analyzers
 from .initialize_analyzers_task import (
     initialize_analyzers_task,
@@ -37,7 +32,6 @@ __all__ = [
     # Celery tasks
     'build_features_task',
     'detect_structural_patterns_task',
-    'detect_typologies_task',
     'initialize_analyzers_task',
     'log_computation_audit_task',
     'daily_analytics_pipeline_task',
@@ -45,7 +39,6 @@ __all__ = [
     # Task Classes
     'BuildFeaturesTask',
     'DetectStructuralPatternsTask',
-    'DetectTypologiesTask',
     'InitializeAnalyzersTask',
     'LogComputationAuditTask',
     'DailyAnalyticsPipelineTask',

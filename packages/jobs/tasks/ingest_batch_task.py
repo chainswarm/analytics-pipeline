@@ -29,18 +29,12 @@ class IngestBatchTask(BaseDataPipelineTask, Singleton):
         )
 
         connection_params = get_connection_params(context.network)
+        connection_params['database'] = f"analytics_{context.network}"
         client_factory = ClientFactory(connection_params)
-        
-        # Use default database where core_* tables reside for insertion
+
         with client_factory.client_context() as client:
             service = IngestionService(client, ingestion_source)
             service.run(context.network, context.processing_date, context.window_days)
-
-        return {
-            "status": "completed",
-            "network": context.network,
-            "date": context.processing_date
-        }
 
 @celery_app.task(
     bind=True,

@@ -9,7 +9,6 @@ from packages.jobs.tasks.ingest_batch_task import IngestBatchTask
 from packages.jobs.tasks import InitializeAnalyzersTask
 from packages.jobs.tasks.build_features_task import BuildFeaturesTask
 from packages.jobs.tasks.detect_structural_patterns_task import DetectStructuralPatternsTask
-from packages.jobs.tasks.detect_typologies_task import DetectTypologiesTask
 from packages.jobs.tasks.log_computation_audit_task import LogComputationAuditTask
 
 
@@ -60,11 +59,7 @@ class BackfillPipelineTask(BaseDataPipelineTask, Singleton):
             structural_patterns_task = DetectStructuralPatternsTask()
             structural_patterns_task.execute_task(date_context)
             
-            logger.info(f"Step 4/6: Detect Typologies for {processing_date_str}")
-            typologies_task = DetectTypologiesTask()
-            typologies_task.execute_task(date_context)
-            
-            logger.info(f"Step 5/6: Log Computation Audit for {processing_date_str}")
+            logger.info(f"Step 4/6: Log Computation Audit for {processing_date_str}")
             audit_context = BaseTaskContext(
                 network=context.network,
                 window_days=context.window_days,

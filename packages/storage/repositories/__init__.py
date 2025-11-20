@@ -8,10 +8,8 @@ from clickhouse_connect.driver import Client
 from clickhouse_connect.driver.exceptions import ClickHouseError
 from loguru import logger
 
-from packages.storage.repositories.alerts_repository import AlertsRepository
 from packages.storage.repositories.base_repository import BaseRepository
 from packages.storage.repositories.feature_repository import FeatureRepository
-from packages.storage.repositories.alert_cluster_repository import AlertClusterRepository
 from packages.storage.repositories.computation_audit_repository import ComputationAuditRepository
 
 def create_database(connection_params):
@@ -180,9 +178,7 @@ class MigrateSchema:
         
         analyzer_schemas = [
             "analyzers_features.sql",
-            "analyzers_alerts.sql",
             "analyzers_pattern_detections.sql",
-            "analyzers_alert_clusters.sql",
             "analyzers_computation_audit.sql",
         ]
         

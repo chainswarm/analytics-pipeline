@@ -52,7 +52,38 @@ class ParquetLoader:
                 
             # Ensure columns match ClickHouse schema expectations if needed
             # For now, we assume the Parquet schema matches the table schema
-            
+
+            # Handle core_asset_prices specifically due to daily partitioning limit (max 100 partitions per insert)
+            if table_name == 'core_asset_prices' and 'price_date' in df.columns:
+                # Deduplicate before processing to avoid exact replicas
+                initial_count = len(df)
+                df = df.drop_duplicates()
+                if len(df) < initial_count:
+                    logger.info(f"Dropped {initial_count - len(df)} duplicate rows from {file_path.name}")
+
+                unique_dates = df['price_date'].unique()
+                if len(unique_dates) > 50:
+                    logger.info(f"Large date range detected ({len(unique_dates)} days) for {table_name}. Chunking inserts...")
+                    chunk_size = 50
+                    total_rows = 0
+                    
+                    # Process in chunks of dates to avoid too many partitions per insert block
+                    for i in range(0, len(unique_dates), chunk_size):
+                        date_chunk = unique_dates[i:i + chunk_size]
+                        df_chunk = df[df['price_date'].isin(date_chunk)]
+                        
+                        self.client.insert_df(
+                            table=table_name,
+                            df=df_chunk,
+                            database=self.client.database
+                        )
+                        logger.debug(f"Inserted chunk {i//chunk_size + 1}: {len(df_chunk)} rows ({len(date_chunk)} days)")
+                        total_rows += len(df_chunk)
+                        
+                    logger.info(f"Loaded {total_rows} rows from {file_path.name} into {table_name} (chunked)")
+                    return total_rows
+
+            # Standard insert for other tables or small batches
             # Use clickhouse-connect's insert method which handles pandas DataFrames efficiently
             self.client.insert_df(
                 table=table_name,
@@ -69,17 +100,7 @@ class ParquetLoader:
 
     def _map_filename_to_table(self, filename: str) -> str:
         """Maps parquet filenames to ClickHouse table names."""
-        # Mapping based on data-pipeline export standard
-        if filename.startswith("money_flows"):
-            # Depending on implementation, we might load into core_transfers (source of truth) 
-            # or a specific cache table. 
-            # Reviewing code: core_transfers is the base. money_flows is derived.
-            # The export_batch_task exports: money_flows, transfers, asset_prices, assets.
-            # We want to populate the 'core_*' tables.
-            return "core_money_flows_mv" # Or core_money_flows if it was a table. 
-            # Wait, core_money_flows is a View/MV. We can't insert into it directly usually?
-            # Actually, core_money_flows_mv IS a SummingMergeTree, so we CAN insert.
-            
+
         if filename.startswith("transfers"):
             return "core_transfers"
             
@@ -88,8 +109,8 @@ class ParquetLoader:
             
         if filename.startswith("assets"):
             return "core_assets"
-            
-        if "address_labels" in filename:
+
+        if filename.startswith("address_labels"):
             return "core_address_labels"
-            
+
         return None

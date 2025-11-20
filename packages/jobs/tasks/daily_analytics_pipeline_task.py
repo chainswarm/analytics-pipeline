@@ -11,7 +11,6 @@ from packages.jobs.tasks.ingest_batch_task import IngestBatchTask
 from packages.jobs.tasks.initialize_analyzers_task import InitializeAnalyzersTask
 from packages.jobs.tasks.build_features_task import BuildFeaturesTask
 from packages.jobs.tasks.detect_structural_patterns_task import DetectStructuralPatternsTask
-from packages.jobs.tasks.detect_typologies_task import DetectTypologiesTask
 from packages.jobs.tasks.log_computation_audit_task import LogComputationAuditTask
 
 
@@ -22,8 +21,7 @@ class DailyAnalyticsPipelineTask(BaseDataPipelineTask, Singleton):
     2. Initialize Analyzers (Schemas & DB check)
     3. Build Features (Graph & ML features)
     4. Detect Structural Patterns (SCC, Money Laundry Patterns)
-    5. Detect Typologies (Alert Generation)
-    6. Audit Log
+    5. Audit Log
     """
     
     def execute_task(self, context: BaseTaskContext):
@@ -35,31 +33,26 @@ class DailyAnalyticsPipelineTask(BaseDataPipelineTask, Singleton):
         try:
             # 1. Ingest Data
             # Note: IngestBatchTask handles source resolution and core table cleanup internally
-            logger.info("Step 1/6: Ingest Batch Data")
+            logger.info("Ingesting Batch Data")
             IngestBatchTask().execute_task(context)
 
             # 2. Initialize Analyzers
             # Handles creating analytics_{network} DB and migrating all schemas (core + analyzers)
-            logger.info("Step 2/6: Initialize Analyzers Schema")
+            logger.info("Initializing Analyzers Schema")
             InitializeAnalyzersTask().execute_task(context)
             
             # 3. Build Features
             # Cleans up feature features partition before building
-            logger.info("Step 3/6: Build Features")
+            logger.info("Building Features")
             BuildFeaturesTask().execute_task(context)
             
             # 4. Detect Patterns
             # Cleans up patterns partition before detecting
-            logger.info("Step 4/6: Detect Structural Patterns")
+            logger.info("Detecting Structural Patterns")
             DetectStructuralPatternsTask().execute_task(context)
             
-            # 5. Detect Typologies
-            # Cleans up alerts/clusters partition before detecting
-            logger.info("Step 5/6: Detect Typologies")
-            DetectTypologiesTask().execute_task(context)
-            
-            # 6. Log Audit
-            logger.info("Step 6/6: Log Computation Audit")
+            # 5. Log Audit
+            logger.info("Loging Computation Audit")
             
             # Create audit context with start time
             audit_context = BaseTaskContext(

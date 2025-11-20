@@ -45,9 +45,7 @@ class ClickHouseExtractor(BaseExtractor):
             ('core_transfers', 'transfers.parquet'),
             ('core_asset_prices', 'asset_prices.parquet'),
             ('core_assets', 'assets.parquet'),
-            # 'core_money_flows' is usually derived, but if we want to sync it:
-            # ('core_money_flows_mv', 'money_flows.parquet') 
-            # For now let's stick to base tables needed for feature building
+            ('core_address_labels', 'address_labels.parquet'),
         ]
         
         for table_name, file_name in tables_to_extract:
@@ -55,12 +53,16 @@ class ClickHouseExtractor(BaseExtractor):
                 query = f"""
                 SELECT *
                 FROM {table_name}
-                WHERE block_timestamp >= {start_timestamp} 
+                WHERE block_timestamp >= {start_timestamp}
                   AND block_timestamp < {end_timestamp}
                 """
                 
                 if table_name == 'core_assets':
                     # Assets might not have block_timestamp or we want all of them
+                    query = f"SELECT * FROM {table_name} WHERE network = '{network}'"
+
+                if table_name == 'core_address_labels':
+                    # Address labels are network specific but not necessarily time-bound for this window
                     query = f"SELECT * FROM {table_name} WHERE network = '{network}'"
                 
                 if table_name == 'core_asset_prices':
