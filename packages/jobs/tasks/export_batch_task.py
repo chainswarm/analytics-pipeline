@@ -21,6 +21,7 @@ from packages.storage.repositories.feature_repository import FeatureRepository
 from packages.storage.repositories.alert_cluster_repository import AlertClusterRepository
 from packages.storage.repositories.money_flows_repository import MoneyFlowsRepository
 from packages.storage.repositories.address_label_repository import AddressLabelRepository
+from packages.storage.repositories.structural_pattern_repository import StructuralPatternRepository
 from packages import setup_logger
 
 
@@ -48,6 +49,7 @@ class ExportBatchTask(BaseDataPipelineTask, Singleton):
             clusters_repository = AlertClusterRepository(client)
             money_flows_repository = MoneyFlowsRepository(client)
             address_label_repository = AddressLabelRepository(client)
+            patterns_repository = StructuralPatternRepository(client)
             
             logger.info(f"Exporting batch: {context.network}/{context.processing_date}/{context.window_days}d")
             
@@ -62,19 +64,21 @@ class ExportBatchTask(BaseDataPipelineTask, Singleton):
             clusters = self._load_clusters(clusters_repository, context.processing_date, context.window_days)
             money_flows = self._load_money_flows(money_flows_repository, context.processing_date, context.window_days)
             address_labels = self._load_address_labels(address_label_repository, context.network)
+            patterns = self._load_patterns(patterns_repository, context.processing_date, context.window_days)
             
             file_paths = {}
             file_paths['alerts'] = self._export_parquet(alerts, export_dir / 'alerts.parquet')
             file_paths['features'] = self._export_parquet(features, export_dir / 'features.parquet')
             file_paths['clusters'] = self._export_parquet(clusters, export_dir / 'clusters.parquet')
             file_paths['money_flows'] = self._export_parquet(money_flows, export_dir / 'money_flows.parquet')
+            file_paths['patterns'] = self._export_parquet(patterns, export_dir / 'patterns.parquet')
             
             labels_file_path = labels_export_dir / f'{context.network}_address_labels.parquet'
             file_paths['address_labels'] = self._export_parquet(address_labels, labels_file_path)
             
             meta = self._generate_metadata(
                 context.network, context.processing_date, context.window_days,
-                alerts, features, clusters, money_flows, address_labels,
+                alerts, features, clusters, money_flows, address_labels, patterns,
                 file_paths
             )
             
@@ -240,6 +244,29 @@ class ExportBatchTask(BaseDataPipelineTask, Singleton):
         
         logger.info(f"Loaded {len(filtered_labels)} address labels")
         return filtered_labels
+
+    def _load_patterns(self, patterns_repository: StructuralPatternRepository, processing_date: str, window_days: int) -> List[Dict]:
+        logger.info("Loading patterns")
+        
+        patterns = patterns_repository.get_deduplicated_patterns(
+            window_days=window_days,
+            processing_date=processing_date
+        )
+        
+        if not patterns:
+            logger.warning(f"No patterns found for window_days={window_days}, processing_date={processing_date}")
+            return []
+        
+        available_cols = list(patterns[0].keys())
+        export_cols = [col for col in available_cols if col != '_version']
+        
+        filtered_patterns = [
+            {col: pattern[col] for col in export_cols}
+            for pattern in patterns
+        ]
+        
+        logger.info(f"Loaded {len(filtered_patterns)} patterns")
+        return filtered_patterns
     
     def _export_parquet(self, data: List[Dict], path: Path) -> str:
         df = pd.DataFrame(data)
@@ -257,6 +284,7 @@ class ExportBatchTask(BaseDataPipelineTask, Singleton):
         clusters: List[Dict],
         money_flows: List[Dict],
         address_labels: List[Dict],
+        patterns: List[Dict],
         file_paths: dict
     ) -> dict:
         logger.info("Generating metadata")
@@ -278,7 +306,8 @@ class ExportBatchTask(BaseDataPipelineTask, Singleton):
                 'features': len(features),
                 'clusters': len(clusters),
                 'money_flows': len(money_flows),
-                'address_labels': len(address_labels)
+                'address_labels': len(address_labels),
+                'patterns': len(patterns)
             },
             
             'sha256': hashes

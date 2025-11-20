@@ -20,11 +20,6 @@ CREATE OR REPLACE TABLE analyzers_pattern_detections (
     addresses_involved Array(String),
     address_roles Array(String),
     
-    -- Pattern metrics
-    severity_score Float32,
-    confidence_score Float32,
-    risk_score Float32,
-    
     -- Pattern-specific data (deduplicated)
     cycle_path Array(String) DEFAULT [],
     cycle_length UInt32 DEFAULT 0,
@@ -43,7 +38,6 @@ CREATE OR REPLACE TABLE analyzers_pattern_detections (
     
     risk_source_address String DEFAULT '',
     distance_to_risk UInt32 DEFAULT 0,
-    risk_propagation_score Float32 DEFAULT 0,
     
     motif_type String DEFAULT '',
     motif_center_address String DEFAULT '',
@@ -60,9 +54,6 @@ CREATE OR REPLACE TABLE analyzers_pattern_detections (
     evidence_volume_usd Decimal128(18),
     detection_method String,
     
-    -- Quality metrics
-    anomaly_score Float32,
-    
     -- Administrative
     _version UInt64
 )
@@ -76,5 +67,3 @@ ALTER TABLE analyzers_pattern_detections ADD INDEX IF NOT EXISTS idx_processing_
 ALTER TABLE analyzers_pattern_detections ADD INDEX IF NOT EXISTS idx_window_days window_days TYPE set(0) GRANULARITY 4;
 ALTER TABLE analyzers_pattern_detections ADD INDEX IF NOT EXISTS idx_pattern_type pattern_type TYPE bloom_filter(0.01) GRANULARITY 4;
 ALTER TABLE analyzers_pattern_detections ADD INDEX IF NOT EXISTS idx_pattern_id pattern_id TYPE bloom_filter(0.01) GRANULARITY 4;
-ALTER TABLE analyzers_pattern_detections ADD INDEX IF NOT EXISTS idx_severity_score severity_score TYPE minmax GRANULARITY 4;
-ALTER TABLE analyzers_pattern_detections ADD INDEX IF NOT EXISTS idx_risk_score risk_score TYPE minmax GRANULARITY 4;

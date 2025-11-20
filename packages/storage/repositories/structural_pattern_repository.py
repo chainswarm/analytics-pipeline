@@ -52,8 +52,6 @@ class StructuralPatternRepository(BaseRepository):
         FROM {self.pattern_detections_table}
         WHERE window_days = {window_days}
           AND processing_date = '{date_obj}'
-          AND risk_score >= {min_risk_score}
-        ORDER BY risk_score DESC, severity_score DESC
         """
         
         result = self.client.query(query)
@@ -83,9 +81,6 @@ class StructuralPatternRepository(BaseRepository):
                     pattern['pattern_hash'],
                     pattern['addresses_involved'],
                     pattern['address_roles'],
-                    float(pattern.get('severity_score', 0.0)),
-                    float(pattern.get('confidence_score', 0.0)),
-                    float(pattern.get('risk_score', 0.0)),
                     pattern.get('cycle_path', []),
                     int(pattern.get('cycle_length', 0)),
                     str(pattern.get('cycle_volume_usd', 0)),
@@ -100,7 +95,6 @@ class StructuralPatternRepository(BaseRepository):
                     pattern.get('hub_addresses', []),
                     pattern.get('risk_source_address', ''),
                     int(pattern.get('distance_to_risk', 0)),
-                    float(pattern.get('risk_propagation_score', 0.0)),
                     pattern.get('motif_type', ''),
                     pattern.get('motif_center_address', ''),
                     int(pattern.get('motif_participant_count', 0)),
@@ -111,7 +105,6 @@ class StructuralPatternRepository(BaseRepository):
                     int(pattern.get('evidence_transaction_count', 0)),
                     str(pattern.get('evidence_volume_usd', 0)),
                     pattern.get('detection_method', DetectionMethods.SCC_ANALYSIS),
-                    float(pattern.get('anomaly_score', 0.0)),
                     self._generate_version(),
                 ])
             
@@ -119,15 +112,13 @@ class StructuralPatternRepository(BaseRepository):
                 'window_days', 'processing_date',
                 'pattern_id', 'pattern_type', 'pattern_hash',
                 'addresses_involved', 'address_roles',
-                'severity_score', 'confidence_score', 'risk_score',
                 'cycle_path', 'cycle_length', 'cycle_volume_usd',
                 'layering_path', 'path_depth', 'path_volume_usd', 'source_address', 'destination_address',
                 'network_members', 'network_size', 'network_density', 'hub_addresses',
-                'risk_source_address', 'distance_to_risk', 'risk_propagation_score',
+                'risk_source_address', 'distance_to_risk',
                 'motif_type', 'motif_center_address', 'motif_participant_count',
                 'detection_timestamp', 'pattern_start_time', 'pattern_end_time', 'pattern_duration_hours',
                 'evidence_transaction_count', 'evidence_volume_usd', 'detection_method',
-                'anomaly_score',
                 '_version'
             ]
             
@@ -160,7 +151,6 @@ class StructuralPatternRepository(BaseRepository):
         SELECT *
         FROM {self.pattern_detections_table}
         WHERE {where_clause}
-        ORDER BY severity_score DESC, risk_score DESC
         """
         
         result = self.client.query(query)
