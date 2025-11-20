@@ -23,6 +23,7 @@ def main():
     parser.add_argument("--network", type=str, required=True, help="Network name")
     parser.add_argument("--date", type=str, required=True, help="Processing date (YYYY-MM-DD)")
     parser.add_argument("--days", type=int, default=1, help="Window size in days")
+    parser.add_argument("--batch-size", type=int, default=1024, help="Batch size for processing")
     args = parser.parse_args()
 
     try:
@@ -34,7 +35,8 @@ def main():
         context = BaseTaskContext(
             network=args.network,
             window_days=args.days,
-            processing_date=args.date
+            processing_date=args.date,
+            batch_size=args.batch_size
         )
         
         task = DailyAnalyticsPipelineTask()

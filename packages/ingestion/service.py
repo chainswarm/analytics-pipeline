@@ -1,3 +1,4 @@
+import re
 import tempfile
 import shutil
 from pathlib import Path
@@ -19,39 +20,86 @@ class IngestionService:
         self.ingestion_source = ingestion_source.upper()
         self.loader = ParquetLoader(client)
 
-    def _truncate_core_tables(self):
-        """
-        Truncates core tables and materialized views to prepare for full ingestion.
-        This ensures a clean state and that MVs (like money_flows) are rebuilt correctly on insert.
-        """
-        logger.info("Truncating core tables and materialized views...")
+    def _truncate_base_tables(self):
+        """Truncates base core tables."""
+        logger.info("Truncating base core tables...")
 
-        tables_to_truncate = [
-            # Base tables
+        base_tables = [
             'core_transfers',
             'core_assets',
             'core_asset_prices',
-            'core_address_labels',
-
-            # Materialized Views (must also be truncated so they don't hold old data)
-            'core_money_flows_mv',
-            'core_money_flows_daily_mv',
-            'core_money_flows_weekly_mv'
+            'core_address_labels'
         ]
 
-        for table in tables_to_truncate:
+        for table in base_tables:
             try:
-                # Check if table exists
-                exists_query = f"EXISTS TABLE {table}"
-                if not self.client.query(exists_query).result_rows[0][0]:
-                    logger.debug(f"Skipping truncate for {table} (not found)")
-                    continue
-
-                query = f"TRUNCATE TABLE {table}"
-                self.client.command(query)
-                logger.info(f"Truncated {table}")
+                if self._table_exists(table):
+                    self.client.command(f"TRUNCATE TABLE {table}")
+                    logger.info(f"Truncated {table}")
             except Exception as e:
                 logger.warning(f"Truncate failed for {table}: {e}")
+
+    def _execute_schema_file(self, file_path: str):
+        """Reads and executes SQL statements from a schema file."""
+        from pathlib import Path
+        # Assuming file_path is relative to project root or packages/storage/schema
+        # If relative path provided, try to resolve from current working dir or known locations
+
+        # Fix: Robust path resolution relative to this file location
+        # This ensures it works regardless of where the script is run from
+        current_file = Path(__file__).resolve()
+        # analytics-pipeline/packages/ingestion/service.py -> analytics-pipeline/packages/storage/schema/
+        package_root = current_file.parent.parent
+        
+        # We expect file_path to be something like 'packages/storage/schema/core_money_flows.sql'
+        # OR just 'storage/schema/core_money_flows.sql' if we are lucky,
+        # BUT the input is 'packages/storage/schema/core_money_flows.sql'
+        
+        # Try relative to package root (packages/)
+        # If input is 'packages/storage...', we need to strip 'packages/' or go up one more level?
+        # Let's try to find the schema directory directly relative to 'ingestion' sibling 'storage'
+        
+        potential_paths = [
+            Path(file_path), # Absolute or relative to CWD
+            package_root.parent / file_path, # relative to analytics-pipeline/
+            package_root / file_path.replace('packages/', ''), # relative to packages/
+            current_file.parent.parent.parent / file_path, # relative to analytics-pipeline root if CWD is different
+            # Hardcoded relative path from service.py to schema dir
+            current_file.parent.parent / 'storage' / 'schema' / Path(file_path).name
+        ]
+        
+        schema_path = None
+        for p in potential_paths:
+            if p.exists():
+                schema_path = p
+                break
+
+        if not schema_path:
+            logger.error(f"Schema file not found: {file_path}, checked: {[str(p) for p in potential_paths]}")
+            return
+
+        logger.info(f"Executing schema file: {schema_path}")
+        try:
+            with open(schema_path, 'r') as f:
+                sql_content = f.read()
+            
+            # specialized split logic for ClickHouse SQL files which might contain semi-colons in strings
+            # For simple schema files, splitting by ';' usually works.
+            statements = [s.strip() for s in sql_content.split(';') if s.strip()]
+            
+            for statement in statements:
+                try:
+                    self.client.command(statement)
+                except Exception as e:
+                    logger.warning(f"Failed to execute statement: {statement[:50]}... Error: {e}")
+            
+            logger.success(f"Executed schema file {schema_path}")
+
+        except Exception as e:
+            logger.error(f"Failed to execute schema file {schema_path}: {e}")
+
+    def _table_exists(self, table: str) -> bool:
+        return self.client.query(f"EXISTS TABLE {table}").result_rows[0][0] == 1
 
     def run(self, network: str, processing_date: str, window_days: int):
         """
@@ -71,9 +119,14 @@ class IngestionService:
                 raise ValueError(f"Unknown ingestion source {self.ingestion_source}")
 
             try:
-                # Truncate tables before ingestion (replacing time-window cleanup)
-                self._truncate_core_tables()
+                # 1. Truncate Base Tables
+                self._truncate_base_tables()
 
+                # 2. Recreate MVs (Drop & Create) to ensure clean state
+                # This truncates implicitly by dropping
+                self._execute_schema_file('packages/storage/schema/core_money_flows.sql')
+
+                # 3. Extract & Load
                 output_path = extractor.extract(network, processing_date, window_days)
                 
                 logger.info(f"Extraction complete. Loading data from {output_path}")

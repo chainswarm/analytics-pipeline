@@ -1,3 +1,6 @@
+DROP TABLE IF EXISTS core_money_flows_mv;
+DROP VIEW IF EXISTS core_money_flows_view;
+
 CREATE MATERIALIZED VIEW IF NOT EXISTS core_money_flows_mv
 ENGINE = SummingMergeTree((
     tx_count,

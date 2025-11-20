@@ -139,7 +139,9 @@ class AddressFeatureAnalyzer:
 
                 stability = float(stability_map.get(address, 0.0))
                 istats = interevent_stats.get(address, {'mean_inter_s': 0.0, 'std_inter_s': 0.0, 'n': 0})
-                mean_inter, std_inter, n_inter = float(istats.get('mean_inter_s') or 0.0), float(istats.get('std_inter_s') or 0.0), int(istats.get('n') or 0)
+                mean_inter = float(istats.get('mean_inter_s') or 0.0)
+                std_inter = float(istats.get('std_inter_s') or 0.0)
+                n_inter = int(istats.get('n') or 0)
                 burstiness = float(max(0.0, min(1.0, (std_inter - mean_inter) / (std_inter + mean_inter)))) if n_inter >= 2 and (mean_inter + std_inter) > 0.0 else 0.0
                 
                 transaction_regularity = float(base_features['regularity_score'])
@@ -167,18 +169,18 @@ class AddressFeatureAnalyzer:
                 summaries = summaries_map.get(address, {})
                 
                 total_vol = float(base_features.get('total_volume_usd', 0))
-                tx_total = int(base_features.get('tx_total_count', 0))
-                degree_total = int(base_features.get('degree_total', 0))
+                tx_total = int(base_features.get('tx_total_count') or 0)
+                degree_total = int(base_features.get('degree_total') or 0)
                 
                 all_features.update({
                     'unique_assets_in': 1, 'unique_assets_out': 1, 'dominant_asset_in': 'NATIVE', 'dominant_asset_out': 'NATIVE', 'asset_diversity_score': 0.0,
                     'hourly_activity': [int(x) for x in patterns.get('hourly_activity', [0]*24)],
                     'daily_activity': [int(x) for x in patterns.get('daily_activity', [0]*7)],
-                    'peak_activity_hour': int(patterns.get('peak_activity_hour', 0)),
-                    'peak_activity_day': int(patterns.get('peak_activity_day', 0)),
-                    'small_transaction_ratio': float(behavioral_features.get('structuring_score', 0.0)),
-                    'first_activity_timestamp': int(summaries.get('first_timestamp', self.start_timestamp)),
-                    'last_activity_timestamp': int(summaries.get('last_timestamp', self.end_timestamp)),
+                    'peak_activity_hour': int(patterns.get('peak_activity_hour') or 0),
+                    'peak_activity_day': int(patterns.get('peak_activity_day') or 0),
+                    'small_transaction_ratio': float(behavioral_features.get('structuring_score') or 0.0),
+                    'first_activity_timestamp': int(summaries.get('first_timestamp') or self.start_timestamp),
+                    'last_activity_timestamp': int(summaries.get('last_timestamp') or self.end_timestamp),
                     'window_start_timestamp': self.start_timestamp, 'window_end_timestamp': self.end_timestamp,
                     'confidence_score': 1.0
                 })
