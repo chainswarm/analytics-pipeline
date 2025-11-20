@@ -151,6 +151,17 @@ class AddressFeatureAnalyzer:
                 }
                 
                 all_features = { **base_features, **stats_features, **flow_features, **behavioral_features, **graph_features, **intraday_features, **directional_flow_features, **advanced_features }
+                
+                # Add missing anomaly scores (required by repository but not yet computed here)
+                all_features.update({
+                    'behavioral_anomaly_score': 0.0,
+                    'graph_anomaly_score': 0.0,
+                    'neighborhood_anomaly_score': 0.0,
+                    'global_anomaly_score': 0.0,
+                    'outlier_transactions': 0,
+                    'suspicious_pattern_score': 0.0
+                })
+
                 all_features.update(self._compute_feature_quality(all_features))
                 patterns = patterns_map.get(address, {})
                 summaries = summaries_map.get(address, {})
@@ -250,8 +261,8 @@ class AddressFeatureAnalyzer:
             coms = cd_algorithms.leiden(G.to_undirected(), weights='weight')
             return {node: i for i, com in enumerate(coms.communities) for node in com}
         except Exception as e:
-            logger.warning(f"Community detection failed: {e}")
-            return {}
+            # User requested this to raise a hard error instead of silent/warning failure
+            raise ValueError(f"Community detection failed: {e}")
     
     def _compute_betweenness_centrality(self, G: nx.DiGraph) -> Dict[str, float]:
         return nx.betweenness_centrality(G, k=min(1000, G.number_of_nodes()-1) if G.number_of_nodes()>1 else None, weight='weight', normalized=True)
@@ -416,7 +427,15 @@ class AddressFeatureAnalyzer:
     def _extract_intraday_features_from_aggregates(self, hourly_volumes: List[float], hourly_activity: List[int]) -> Dict:
         if len(hourly_volumes) != 24 or len(hourly_activity) != 24: raise ValueError("Invalid hourly aggregates")
         non_zero_volumes, total_txs = [v for v in hourly_volumes if v > 0], sum(hourly_activity)
-    
+
+        return {
+            'hourly_volume_variance': float(np.var(non_zero_volumes)) if len(non_zero_volumes) > 1 else 0.0,
+            'peak_volume_hour': int(np.argmax(hourly_volumes)),
+            'intraday_volume_ratio': float(max(hourly_volumes) / (sum(non_zero_volumes) / 24.0)) if sum(non_zero_volumes) > 0 else 0.0,
+            'hourly_transaction_entropy': float(self._calculate_shannon_entropy([c/total_txs for c in hourly_activity if c>0])) if total_txs > 0 else 0.0,
+            'volume_concentration_score': float(self._calculate_gini_coefficient(non_zero_volumes))
+        }
+
     def _compute_feature_quality(self, features: Dict) -> Dict:
         total_features = len([v for v in features.values() if isinstance(v, (int, float, Decimal)) and v != 0])
         null_features = len([v for v in features.values() if v is None or (isinstance(v, (int, float)) and v == 0)])
@@ -428,13 +447,6 @@ class AddressFeatureAnalyzer:
             'completeness_score': float(completeness),
             'quality_score': float(quality),
             'outlier_score': 0.0
-        }
-        return {
-            'hourly_volume_variance': np.var(non_zero_volumes) if len(non_zero_volumes) > 1 else 0.0,
-            'peak_volume_hour': int(np.argmax(hourly_volumes)),
-            'intraday_volume_ratio': (max(hourly_volumes) / (sum(non_zero_volumes) / 24.0)) if sum(non_zero_volumes) > 0 else 0.0,
-            'hourly_transaction_entropy': self._calculate_shannon_entropy([c/total_txs for c in hourly_activity if c>0]) if total_txs > 0 else 0.0,
-            'volume_concentration_score': self._calculate_gini_coefficient(non_zero_volumes)
         }
 
     def _extract_directional_flow_features_cached(self, address: str, flows: List[Dict]) -> Dict:

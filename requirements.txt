@@ -24,3 +24,6 @@ uvicorn
 prometheus-client
 
 boto3
+
+ igraph
+ leidenalg

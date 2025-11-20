@@ -31,16 +31,12 @@ class DailyAnalyticsPipelineTask(BaseDataPipelineTask, Singleton):
         logger.info(f"Starting Daily Analytics Pipeline for {network} on {processing_date}")
         
         try:
-            # 1. Ingest Data
-            # Note: IngestBatchTask handles source resolution and core table cleanup internally
+            logger.info("Initializing Analyzers Schema")
+            InitializeAnalyzersTask().execute_task(context)
+
             logger.info("Ingesting Batch Data")
             IngestBatchTask().execute_task(context)
 
-            # 2. Initialize Analyzers
-            # Handles creating analytics_{network} DB and migrating all schemas (core + analyzers)
-            logger.info("Initializing Analyzers Schema")
-            InitializeAnalyzersTask().execute_task(context)
-            
             # 3. Build Features
             # Cleans up feature features partition before building
             logger.info("Building Features")

@@ -147,12 +147,12 @@ class FeatureRepository(BaseRepository):
                     float(feature.get('amount_predictability', 0.0)),
                     
                     # Risk and anomaly features (from schema)
-                    float(feature['behavioral_anomaly_score']),
-                    float(feature['graph_anomaly_score']),
-                    float(feature['neighborhood_anomaly_score']),
-                    float(feature['global_anomaly_score']),
-                    int(feature['outlier_transactions']),
-                    float(feature['suspicious_pattern_score']),
+                    # float(feature['behavioral_anomaly_score']),
+                    # float(feature['graph_anomaly_score']),
+                    # float(feature['neighborhood_anomaly_score']),
+                    # float(feature['global_anomaly_score']),
+                    # int(feature['outlier_transactions']),
+                    # float(feature['suspicious_pattern_score']),
                     
                     # Quality scores
                     float(feature['completeness_score']),
@@ -206,8 +206,9 @@ class FeatureRepository(BaseRepository):
                 # Behavioral pattern features (entropy/ratios)
                 'hourly_entropy', 'daily_entropy', 'weekend_transaction_ratio', 'night_transaction_ratio', 'consistency_score',
                 # Classification features
-                'is_exchange_like', 'is_whale', 'is_mixer_like', 'is_contract_like', 'is_new_address', 'is_dormant_reactivated',
-                'is_high_volume_trader', 'is_hub_address', 'is_retail_active', 'is_whale_inactive', 'is_retail_inactive', 'is_regular_user',
+                # 'is_exchange_like', 'is_whale', 'is_mixer_like', 'is_contract_like', # Missing in values and DB
+                'is_new_address', 'is_dormant_reactivated',
+                # 'is_high_volume_trader', 'is_hub_address', 'is_retail_active', 'is_whale_inactive', 'is_retail_inactive', 'is_regular_user', # Missing in values and DB
                 # Supporting metrics
                 'unique_recipients_count', 'unique_senders_count',
                 # GRAPH ANALYTICS COLUMNS (MANDATORY - matching schema exactly)
@@ -217,9 +218,9 @@ class FeatureRepository(BaseRepository):
                 # Advanced flow features (from schema)
                 'flow_reciprocity_entropy', 'counterparty_stability', 'flow_burstiness', 'transaction_regularity', 'amount_predictability',
                 # Risk and anomaly features (from schema)
-                'behavioral_anomaly_score', 'graph_anomaly_score', 'neighborhood_anomaly_score',
-                'global_anomaly_score',
-                'outlier_transactions', 'suspicious_pattern_score',
+                # 'behavioral_anomaly_score', 'graph_anomaly_score', 'neighborhood_anomaly_score', # Missing in DB
+                # 'global_anomaly_score', # Missing in DB
+                # 'outlier_transactions', 'suspicious_pattern_score', # Missing in DB
                 # Quality scores
                 'completeness_score', 'quality_score', 'outlier_score', 'confidence_score',
                 # Temporal metadata (from schema)
