@@ -132,7 +132,9 @@ class StructuralPatternRepository(BaseRepository):
         self,
         window_days: int,
         processing_date: str,
-        pattern_type: Optional[str] = None
+        pattern_type: Optional[str] = None,
+        limit: int = 1_000_000,
+        offset: int = 0
     ) -> List[Dict]:
         from datetime import datetime
         date_obj = datetime.strptime(processing_date, '%Y-%m-%d').date()
@@ -151,9 +153,38 @@ class StructuralPatternRepository(BaseRepository):
         SELECT *
         FROM {self.pattern_detections_table}
         WHERE {where_clause}
+        LIMIT {limit} OFFSET {offset}
         """
         
         result = self.client.query(query)
         return [row_to_dict(row, result.column_names) for row in result.result_rows]
+
+    def get_deduplicated_patterns_count(
+        self,
+        window_days: int,
+        processing_date: str,
+        pattern_type: Optional[str] = None
+    ) -> int:
+        from datetime import datetime
+        date_obj = datetime.strptime(processing_date, '%Y-%m-%d').date()
+        
+        where_conditions = [
+            f"window_days = {window_days}",
+            f"processing_date = '{date_obj}'"
+        ]
+        
+        if pattern_type:
+            where_conditions.append(f"pattern_type = '{pattern_type}'")
+        
+        where_clause = " AND ".join(where_conditions)
+        
+        query = f"""
+        SELECT count()
+        FROM {self.pattern_detections_table}
+        WHERE {where_clause}
+        """
+        
+        result = self.client.query(query)
+        return int(result.result_rows[0][0])
         
         return stats

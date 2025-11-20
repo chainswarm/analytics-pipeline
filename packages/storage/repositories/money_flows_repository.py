@@ -37,8 +37,8 @@ class MoneyFlowsRepository(BaseRepository):
         LIMIT %(limit)s
         """
         
-        res = self.client.query(query, parameters=params)
-        return (row_to_dict(row, res.column_names) for row in res.result_rows)
+        result = self.client.query(query, parameters=params)
+        return (row_to_dict(row, result.column_names) for row in result.result_rows)
 
     @log_errors
     def get_flows_by_address(self, address: str, start_ts: int, end_ts: int, is_outgoing: bool) -> List[Dict]:
@@ -61,8 +61,8 @@ class MoneyFlowsRepository(BaseRepository):
           AND first_seen_timestamp <= %(end_ts)s
         """
 
-        res = self.client.query(query, parameters=params)
-        return (row_to_dict(row, res.column_names) for row in res.result_rows)
+        result = self.client.query(query, parameters=params)
+        return (row_to_dict(row, result.column_names) for row in result.result_rows)
 
     @log_errors
     def get_flows_from_addresses(self, from_addresses: List[str], start_ts: int, end_ts: int) -> List[Dict]:
@@ -80,16 +80,16 @@ class MoneyFlowsRepository(BaseRepository):
           AND first_seen_timestamp <= %(end_ts)s
         """
 
-        res = self.client.query(query, parameters=params)
-        return (row_to_dict(row, res.column_names) for row in res.result_rows)
+        result = self.client.query(query, parameters=params)
+        return (row_to_dict(row, result.column_names) for row in result.result_rows)
 
     @log_errors
     def count_flows(self) -> int:
 
         query = f"SELECT count() FROM {self.table_name}"
 
-        res = self.client.query(query)
-        count = res.result_rows[0][0]
+        result = self.client.query(query)
+        count = result.result_rows[0][0]
         return int(count)
 
     @log_errors
@@ -103,11 +103,11 @@ class MoneyFlowsRepository(BaseRepository):
         FROM {self.table_name}
         """
         
-        res = self.client.query(query)
-        if not res.result_rows:
+        result = self.client.query(query)
+        if not result.result_rows:
             raise ValueError(f"No data found in windowed table {self.table_name}")
         
-        row = res.result_rows[0]
+        row = result.result_rows[0]
         min_ts, max_ts = row[0], row[1]
         
         if min_ts is None or max_ts is None:
@@ -145,8 +145,8 @@ class MoneyFlowsRepository(BaseRepository):
         ORDER BY first_seen_timestamp ASC
         """
         
-        res = self.client.query(query, parameters=params)
-        return [row_to_dict(row, res.column_names) for row in res.result_rows]
+        result = self.client.query(query, parameters=params)
+        return [row_to_dict(row, result.column_names) for row in result.result_rows]
 
     @log_errors
     def get_node_volumes(self, addresses: List[str]) -> Dict[str, float]:
@@ -188,11 +188,11 @@ class MoneyFlowsRepository(BaseRepository):
         ORDER BY address
         """
         
-        res = self.client.query(query, parameters=params)
+        result = self.client.query(query, parameters=params)
         
         # Convert result to dictionary with float values
         volume_dict = {}
-        for row in res.result_rows:
+        for row in result.result_rows:
             address = row[0]
             total_volume = float(row[1]) if row[1] is not None else 0.0
             volume_dict[address] = total_volume
@@ -221,8 +221,8 @@ class MoneyFlowsRepository(BaseRepository):
         ORDER BY first_seen_timestamp ASC
         """
         
-        res = self.client.query(query, parameters=params)
-        return [row_to_dict(row, res.column_names) for row in res.result_rows]
+        result = self.client.query(query, parameters=params)
+        return [row_to_dict(row, result.column_names) for row in result.result_rows]
 
     @log_errors
     def get_fresh_to_exchange_flows(
@@ -272,8 +272,8 @@ class MoneyFlowsRepository(BaseRepository):
             AND mf.last_seen_timestamp <= %(end_ts)s
         """
         
-        res = self.client.query(query, parameters=params)
-        return [row_to_dict(row, res.column_names) for row in res.result_rows]
+        result = self.client.query(query, parameters=params)
+        return [row_to_dict(row, result.column_names) for row in result.result_rows]
 
     @log_errors
     def get_flows_by_address(self, address: str) -> List[Dict]:
@@ -288,8 +288,8 @@ class MoneyFlowsRepository(BaseRepository):
         ORDER BY first_seen_timestamp DESC
         """
         
-        res = self.client.query(query, parameters=params)
-        return [row_to_dict(row, res.column_names) for row in res.result_rows]
+        result = self.client.query(query, parameters=params)
+        return [row_to_dict(row, result.column_names) for row in result.result_rows]
 
     @log_errors
     def get_windowed_flows_from_transfers(
@@ -376,5 +376,5 @@ class MoneyFlowsRepository(BaseRepository):
         LIMIT %(limit)s
         """
         
-        res = self.client.query(query, parameters=params)
-        return [row_to_dict(row, res.column_names) for row in res.result_rows]
+        result = self.client.query(query, parameters=params)
+        return [row_to_dict(row, result.column_names) for row in result.result_rows]

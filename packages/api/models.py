@@ -1,3 +1,4 @@
+from typing import Optional, Dict, List
 from typing import Optional, Dict
 from pydantic import BaseModel, Field
 
@@ -19,3 +20,9 @@ class PipelineRunResponse(BaseModel):
     task_ids: list[str]
     network: str
     processed_dates: list[str]
+class PaginatedResponse(BaseModel):
+    rows: List[Dict]
+    row_count: int
+    offset: int
+    limit: int
+    has_more: bool

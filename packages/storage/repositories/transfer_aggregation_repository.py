@@ -143,8 +143,8 @@ class TransferAggregationRepository:
         LIMIT %(lim)s
         """
         
-        res = self.client.query(query, parameters=params)
-        rows = [dict(zip(res.column_names, row)) for row in res.result_rows]
+        result = self.client.query(query, parameters=params)
+        rows = [dict(zip(result.column_names, row)) for row in result.result_rows]
         
         logger.info(f"Retrieved {len(rows)} windowed money flows for window [{start_timestamp_ms}, {end_timestamp_ms})")
         return rows
@@ -186,8 +186,8 @@ class TransferAggregationRepository:
         LIMIT %(lim)s
         """
         
-        res = self.client.query(q, parameters=params)
-        rows = [dict(zip(res.column_names, row)) for row in res.result_rows]
+        result = self.client.query(q, parameters=params)
+        rows = [dict(zip(result.column_names, row)) for row in result.result_rows]
         logger.debug(f"pair_aggregates_by_asset window [{start_timestamp_ms}, {end_timestamp_ms}) -> {len(rows)} rows")
         return rows
 
@@ -217,8 +217,8 @@ class TransferAggregationRepository:
         LIMIT %(lim)s
         """
         
-        res = self.client.query(q, parameters=params)
-        return [row[0] for row in res.result_rows]
+        result = self.client.query(q, parameters=params)
+        return [row[0] for row in result.result_rows]
 
     @log_errors
     def top_pairs_for_snapshot(
@@ -319,7 +319,7 @@ class TransferAggregationRepository:
         LEFT JOIN daily_agg da ON aa.address = da.address
         """
         
-        res = self.client.query(q, parameters=params)
+        result_set = self.client.query(q, parameters=params)
         
         # Build result dictionary, including addresses with no data (default patterns)
         result = {}
@@ -334,7 +334,7 @@ class TransferAggregationRepository:
             }
         
         # Update with actual data from query results
-        for row in res.result_rows:
+        for row in result_set.result_rows:
             address = row[0]
             
             # Ensure arrays are always exactly the correct length
@@ -435,8 +435,8 @@ class TransferAggregationRepository:
           AND window_end_timestamp <= %(t1)s
         """
 
-        res = self.client.query(q, parameters=params)
-        if not res.result_rows:
+        result = self.client.query(q, parameters=params)
+        if not result.result_rows:
             return {
                 'money_flows_count': 0,
                 'total_volume_usd': 0.0,
@@ -445,7 +445,7 @@ class TransferAggregationRepository:
                 'last_timestamp': end_timestamp_ms
             }
 
-        row = res.result_rows[0]
+        row = result.result_rows[0]
         return {
             'money_flows_count': int(row[0]) if row[0] is not None else 0,
             'total_volume_usd': float(row[1]) if row[1] is not None else 0.0,
@@ -481,8 +481,8 @@ class TransferAggregationRepository:
           AND _version <= %(t1)s
         """
 
-        res = self.client.query(q, parameters=params)
-        if not res.result_rows:
+        result = self.client.query(q, parameters=params)
+        if not result.result_rows:
             return {
                 'address_profiles_count': 0,
                 'avg_volume_per_address': 0.0,
@@ -490,7 +490,7 @@ class TransferAggregationRepository:
                 'min_volume_per_address': 0.0
             }
 
-        row = res.result_rows[0]
+        row = result.result_rows[0]
         return {
             'address_profiles_count': int(row[0]) if row[0] is not None else 0,
             'avg_volume_per_address': float(row[1]) if row[1] is not None else 0.0,
@@ -573,7 +573,7 @@ class TransferAggregationRepository:
         GROUP BY address
         """
 
-        res = self.client.query(q, parameters=params)
+        query_result = self.client.query(q, parameters=params)
 
         result: Dict[str, Dict[str, Any]] = {}
         # Initialize defaults for all requested addresses
@@ -589,7 +589,7 @@ class TransferAggregationRepository:
             }
 
         # Update with actual data
-        for row in res.result_rows:
+        for row in query_result.result_rows:
             addr = row[0]
             result[addr] = {
                 'first_timestamp': int(row[1]) if row[1] is not None else int(start_timestamp_ms),
@@ -601,7 +601,7 @@ class TransferAggregationRepository:
                 'night_tx_count': int(row[7]) if row[7] is not None else 0
             }
 
-        logger.debug(f"Bulk temporal summaries: queried {len(addresses)} addresses, returned {len(res.result_rows)} with data")
+        logger.debug(f"Bulk temporal summaries: queried {len(addresses)} addresses, returned {len(query_result.result_rows)} with data")
         return result
     @log_errors
     def get_bulk_address_reciprocity_stats(
@@ -672,11 +672,11 @@ class TransferAggregationRepository:
         FROM totals t
         LEFT JOIN recips r USING (address)
         """
-        res = self.client.query(q, parameters=params)
+        query_result = self.client.query(q, parameters=params)
         result: Dict[str, Dict[str, Any]] = {}
         for addr in addresses:
             result[addr] = {'total_volume': 0.0, 'reciprocal_volume': 0.0}
-        for row in res.result_rows:
+        for row in query_result.result_rows:
             addr = row[0]
             result[addr] = {
                 'total_volume': float(row[1]) if row[1] is not None else 0.0,
@@ -782,10 +782,10 @@ class TransferAggregationRepository:
         )
         SELECT addr AS address, toFloat64(ifNull(stability, toFloat64(0))) AS stability FROM stab
         """
-        res = self.client.query(q, parameters=params)
+        query_result = self.client.query(q, parameters=params)
         result: Dict[str, float] = {}
         for addr in addresses:
             result[addr] = 0.0
-        for row in res.result_rows:
+        for row in query_result.result_rows:
             result[row[0]] = float(row[1]) if row[1] is not None else 0.0
         return result

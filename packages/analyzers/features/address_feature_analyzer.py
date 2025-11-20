@@ -395,9 +395,9 @@ class AddressFeatureAnalyzer:
         if not moments: raise ValueError(f"Missing statistical moments for {address}")
         n, s1, s2 = int(moments['n']), float(moments['s1']), float(moments['s2'])
         if n < 2: return self._empty_statistical_features()
-        mean = s1 / n; var = (s2 - s1**2 / n) / (n - 1)
+        mean = s1 / n; variance = (s2 - s1**2 / n) / (n - 1)
         return {
-            'amount_variance': var, 'volume_std': np.sqrt(var), 'volume_cv': np.sqrt(var) / max(mean, 1.0),
+            'amount_variance': variance, 'volume_std': np.sqrt(variance), 'volume_cv': np.sqrt(variance) / max(mean, 1.0),
             'amount_skewness': 0.0, 'amount_kurtosis': 0.0 # simplified
         }
 

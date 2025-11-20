@@ -6,84 +6,136 @@ from fastapi.responses import FileResponse
 from loguru import logger
 
 from packages.storage.repositories import get_connection_params, ClientFactory
+from packages.storage.repositories.feature_repository import FeatureRepository
+from packages.storage.repositories.structural_pattern_repository import StructuralPatternRepository
+from packages.api.models import PaginatedResponse
 
 router = APIRouter(tags=["export"])
 
-@router.get("/export/features", response_class=FileResponse)
+@router.get("/export/features", response_model=PaginatedResponse, responses={200: {"content": {"application/x-parquet": {}}}})
 async def export_features(
     request: Request,
     network: str = Query(..., description="Network name"),
     window_days: int = Query(180, description="Window size"),
-    limit: int = Query(100000, description="Row limit")
+    processing_date: str = Query(..., description="Processing date in YYYY-MM-DD format"),
+    limit: int = Query(1000, description="Row limit (for JSON)"),
+    offset: int = Query(0, description="Offset (for JSON)")
 ):
     """
-    Export features from analyzers_features table to Parquet.
-    Used by ML Pipeline for ingestion.
+    Export features from analyzers_features table.
+    Supports Parquet export (Stream) or JSON pagination based on Accept header.
     """
     try:
-        # Re-construct get_connection_params logic for dynamic db (analytics_{network})
-        # We can reuse existing get_connection_params which already handles the naming if implemented correctly
-        # But need to ensure we pass the correct network identifier
-        
         params = get_connection_params(network)
+        accept = request.headers.get('accept', '')
         
         client_factory = ClientFactory(params)
         with client_factory.client_context() as client:
-            query = f"""
-                SELECT *
-                FROM analyzers_features
-                WHERE window_days = {window_days}
-                LIMIT {limit}
-            """
             
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.parquet') as tmp:
-                logger.info(f"Exporting features to {tmp.name}")
-                df = client.query_df(query)
+            # Parquet Export Mode (Unlimited)
+            if 'application/x-parquet' in accept or 'application/octet-stream' in accept:
+                # Parse date for safety check
+                dt_obj = datetime.strptime(processing_date, '%Y-%m-%d').date()
                 
-                if df.empty:
-                    # Even empty, return schema
-                    pass
+                query = f"""
+                    SELECT *
+                    FROM analyzers_features
+                    WHERE window_days = {window_days} AND processing_date = '{dt_obj}'
+                """
+                
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.parquet') as tmp:
+                    logger.info(f"Exporting features to {tmp.name}")
+                    df = client.query_df(query)
                     
-                df.to_parquet(tmp.name, index=False, compression='snappy')
-                return FileResponse(tmp.name, media_type='application/octet-stream', filename=f"features_{network}_{window_days}.parquet")
+                    # If empty, still create valid parquet file
+                    df.to_parquet(tmp.name, index=False, compression='snappy')
+                    return FileResponse(tmp.name, media_type='application/octet-stream', filename=f"features_{network}_{window_days}_{processing_date}.parquet")
+
+            # JSON Pagination Mode
+            repository = FeatureRepository(client)
+            features = repository.get_all_features(
+                window_days=window_days,
+                processing_date=processing_date,
+                limit=limit,
+                offset=offset
+            )
+            
+            total_count = repository.get_window_features_count(
+                window_days=window_days,
+                processing_date=processing_date
+            )
+            
+            return PaginatedResponse(
+                rows=features,
+                row_count=len(features), # Count of current page
+                offset=offset,
+                limit=limit,
+                has_more=(offset + len(features) < total_count)
+            )
                 
     except Exception as e:
         logger.error(f"Failed to export features: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/export/patterns", response_class=FileResponse)
+@router.get("/export/patterns", response_model=PaginatedResponse, responses={200: {"content": {"application/x-parquet": {}}}})
 async def export_patterns(
     request: Request,
     network: str = Query(..., description="Network name"),
     window_days: int = Query(180, description="Window size"),
-    limit: int = Query(100000, description="Row limit")
+    processing_date: str = Query(..., description="Processing date in YYYY-MM-DD format"),
+    limit: int = Query(1000, description="Row limit (for JSON)"),
+    offset: int = Query(0, description="Offset (for JSON)")
 ):
     """
-    Export patterns from analyzers_pattern_detections table to Parquet.
-    Used by ML Pipeline for ingestion.
+    Export patterns from analyzers_pattern_detections table.
+    Supports Parquet export (Stream) or JSON pagination based on Accept header.
     """
     try:
         params = get_connection_params(network)
+        accept = request.headers.get('accept', '')
         
         client_factory = ClientFactory(params)
         with client_factory.client_context() as client:
-            query = f"""
-                SELECT *
-                FROM analyzers_pattern_detections
-                WHERE window_days = {window_days}
-                LIMIT {limit}
-            """
-            
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.parquet') as tmp:
-                logger.info(f"Exporting patterns to {tmp.name}")
-                df = client.query_df(query)
+
+            # Parquet Export Mode (Unlimited)
+            if 'application/x-parquet' in accept or 'application/octet-stream' in accept:
+                dt_obj = datetime.strptime(processing_date, '%Y-%m-%d').date()
                 
-                if df.empty:
-                    pass
+                query = f"""
+                    SELECT *
+                    FROM analyzers_pattern_detections
+                    WHERE window_days = {window_days} AND processing_date = '{dt_obj}'
+                """
+                
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.parquet') as tmp:
+                    logger.info(f"Exporting patterns to {tmp.name}")
+                    df = client.query_df(query)
                     
-                df.to_parquet(tmp.name, index=False, compression='snappy')
-                return FileResponse(tmp.name, media_type='application/octet-stream', filename=f"patterns_{network}_{window_days}.parquet")
+                    df.to_parquet(tmp.name, index=False, compression='snappy')
+                    return FileResponse(tmp.name, media_type='application/octet-stream', filename=f"patterns_{network}_{window_days}_{processing_date}.parquet")
+
+            # JSON Pagination Mode
+            repository = StructuralPatternRepository(client)
+            patterns = repository.get_deduplicated_patterns(
+                window_days=window_days,
+                processing_date=processing_date,
+                limit=limit,
+                offset=offset
+            )
+            
+            total_count = repository.get_deduplicated_patterns_count(
+                window_days=window_days,
+                processing_date=processing_date
+            )
+            
+            return PaginatedResponse(
+                rows=patterns,
+                row_count=len(patterns),
+                offset=offset,
+                limit=limit,
+                has_more=(offset + len(patterns) < total_count)
+            )
                 
     except Exception as e:
         logger.error(f"Failed to export patterns: {e}")

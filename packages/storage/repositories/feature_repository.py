@@ -246,12 +246,18 @@ class FeatureRepository(BaseRepository):
 
         query = f"SELECT count() FROM {self.features_table_name}"
         
-        res = self.client.query(query)
-        count = res.result_rows[0][0]
+        result = self.client.query(query)
+        count = result.result_rows[0][0]
         return int(count)
-    def get_all_features(self, window_days: int = None, processing_date: str = None, limit: int = 1_000_000) -> List[Dict]:
+    def get_all_features(
+        self,
+        window_days: int = None,
+        processing_date: str = None,
+        limit: int = 1_000_000,
+        offset: int = 0
+    ) -> List[Dict]:
         where_clauses = []
-        params = {'limit': limit}
+        params = {'limit': limit, 'offset': offset}
         
         if window_days is not None:
             where_clauses.append("window_days = %(window_days)s")
@@ -270,11 +276,40 @@ class FeatureRepository(BaseRepository):
         FROM {self.features_table_name}
         WHERE {where_clause}
         ORDER BY total_volume_usd DESC
-        LIMIT %(limit)s
+        LIMIT %(limit)s OFFSET %(offset)s
         """
         
         result = self.client.query(query, parameters=params)
         return [row_to_dict(row, result.column_names) for row in result.result_rows]
+
+    def get_window_features_count(
+        self,
+        window_days: int = None,
+        processing_date: str = None
+    ) -> int:
+        where_clauses = []
+        params = {}
+        
+        if window_days is not None:
+            where_clauses.append("window_days = %(window_days)s")
+            params['window_days'] = window_days
+            
+        if processing_date is not None:
+            from datetime import datetime
+            date_obj = datetime.strptime(processing_date, '%Y-%m-%d').date()
+            where_clauses.append("processing_date = %(processing_date)s")
+            params['processing_date'] = date_obj
+        
+        where_clause = " AND ".join(where_clauses) if where_clauses else "1=1"
+        
+        query = f"""
+        SELECT count()
+        FROM {self.features_table_name}
+        WHERE {where_clause}
+        """
+        
+        result = self.client.query(query, parameters=params)
+        return int(result.result_rows[0][0])
 
     def get_features_by_quality(self, min_quality_score: Decimal, limit: int = 1000) -> List[Dict]:
 
@@ -291,8 +326,8 @@ class FeatureRepository(BaseRepository):
         LIMIT %(limit)s
         """
         
-        res = self.client.query(query, parameters=params)
-        rows = [row_to_dict(row, res.column_names) for row in res.result_rows]
+        result = self.client.query(query, parameters=params)
+        rows = [row_to_dict(row, result.column_names) for row in result.result_rows]
         return rows
 
     def get_features_for_export(
@@ -312,19 +347,19 @@ class FeatureRepository(BaseRepository):
         LIMIT %(limit)s
         """
         
-        res = self.client.query(query, parameters=params)
+        result = self.client.query(query, parameters=params)
         
         if feature_subset:
             # Filter the dictionary keys after using row_to_dict
             rows = []
-            for row in res.result_rows:
-                full_dict = row_to_dict(row, res.column_names)
+            for row in result.result_rows:
+                full_dict = row_to_dict(row, result.column_names)
                 # Ensure address is always included
                 filtered_keys = ['address'] + [col for col in feature_subset if col != 'address' and col in full_dict]
                 filtered_dict = {key: full_dict[key] for key in filtered_keys if key in full_dict}
                 rows.append(filtered_dict)
         else:
-            rows = [row_to_dict(row, res.column_names) for row in res.result_rows]
+            rows = [row_to_dict(row, result.column_names) for row in result.result_rows]
 
         return rows
 
@@ -340,8 +375,8 @@ class FeatureRepository(BaseRepository):
         FROM {self.features_table_name}
         """
         
-        res = self.client.query(query)
-        row = res.result_rows[0]
+        result = self.client.query(query)
+        row = result.result_rows[0]
         
         counts = {
             'total_addresses': int(row[0]),

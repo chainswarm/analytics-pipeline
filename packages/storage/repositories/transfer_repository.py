@@ -101,8 +101,8 @@ class TransferRepository(BaseRepository):
         LIMIT %(lim)s
         """
         
-        res = self.client.query(q, parameters=params)
-        return [row_to_dict(row, res.column_names) for row in res.result_rows]
+        result = self.client.query(q, parameters=params)
+        return [row_to_dict(row, result.column_names) for row in result.result_rows]
 
     @log_errors
     def get_distinct_assets_with_first_seen(self, network: str = None) -> List[Dict[str, Any]]:
@@ -119,8 +119,8 @@ class TransferRepository(BaseRepository):
         ORDER BY first_seen_timestamp
         """
         
-        res = self.client.query(q)
-        return [row_to_dict(row, res.column_names) for row in res.result_rows]
+        result = self.client.query(q)
+        return [row_to_dict(row, result.column_names) for row in result.result_rows]
 
     @log_errors
     def get_address_amounts_for_statistics(self, address: str, start_ts: int, end_ts: int) -> List[float]:
@@ -212,11 +212,11 @@ class TransferRepository(BaseRepository):
         FROM t
         GROUP BY address
         """
-        res = self.client.query(q, parameters=params)
+        result = self.client.query(q, parameters=params)
         out: Dict[str, Dict[str, Any]] = {}
         for addr in addresses:
             out[addr] = {'n': 0, 's1': 0.0, 's2': 0.0, 's3': 0.0, 's4': 0.0}
-        for row in res.result_rows:
+        for row in result.result_rows:
             addr = row[0]
             out[addr] = {
                 'n': int(row[1]) if row[1] is not None else 0,
@@ -262,7 +262,7 @@ class TransferRepository(BaseRepository):
         FROM t
         GROUP BY address
         """
-        res = self.client.query(q, parameters=params)
+        result = self.client.query(q, parameters=params)
         out: Dict[str, Dict[str, Any]] = {}
         for addr in addresses:
             out[addr] = {
@@ -273,7 +273,7 @@ class TransferRepository(BaseRepository):
                 'weekend_tx_count': 0,
                 'night_tx_count': 0
             }
-        for row in res.result_rows:
+        for row in result.result_rows:
             addr = row[0]
             out[addr] = {
                 'total_tx_pos_amount': int(row[1]) if row[1] is not None else 0,
@@ -322,11 +322,11 @@ class TransferRepository(BaseRepository):
         LEFT JOIN agg USING (address)
         GROUP BY a.address
         """
-        res = self.client.query(q, parameters=params)
+        result = self.client.query(q, parameters=params)
         out: Dict[str, List[float]] = {}
         for addr in addresses:
             out[addr] = [0.0] * 24
-        for row in res.result_rows:
+        for row in result.result_rows:
             addr = row[0]
             vols = list(row[1]) if row[1] is not None else [0.0] * 24
             if len(vols) != 24:
@@ -373,11 +373,11 @@ class TransferRepository(BaseRepository):
             length(diffs) AS n
         FROM stats
         """
-        res = self.client.query(q, parameters=params)
+        result = self.client.query(q, parameters=params)
         out: Dict[str, Dict[str, Any]] = {}
         for addr in addresses:
             out[addr] = {'mean_inter_s': 0.0, 'std_inter_s': 0.0, 'n': 0}
-        for row in res.result_rows:
+        for row in result.result_rows:
             addr = row[0]
             out[addr] = {
                 'mean_inter_s': float(row[1]) if row[1] is not None else 0.0,
@@ -414,11 +414,11 @@ class TransferRepository(BaseRepository):
         INNER JOIN q USING (address)
         GROUP BY t.address
         """
-        res = self.client.query(q, parameters=params)
+        result = self.client.query(q, parameters=params)
         out: Dict[str, int] = {}
         for addr in addresses:
             out[addr] = 0
-        for row in res.result_rows:
+        for row in result.result_rows:
             out[row[0]] = int(row[1]) if row[1] is not None else 0
         return out
 
