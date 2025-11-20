@@ -21,9 +21,9 @@ def get_db_client(network: str) -> Client:
     Get ClickHouse client connected to the analytics database for the specified network.
     """
     host = os.getenv('CLICKHOUSE_HOST', 'localhost')
-    port = int(os.getenv('CLICKHOUSE_PORT', 8123))
-    user = os.getenv('CLICKHOUSE_USER', 'default')
-    password = os.getenv('CLICKHOUSE_PASSWORD', '')
+    port = int(os.getenv('CLICKHOUSE_PORT', 8125))
+    user = os.getenv('CLICKHOUSE_USER', 'user')
+    password = os.getenv('CLICKHOUSE_PASSWORD', 'password1234')
     
     # Database naming convention: analytics_{network}
     database = f"analytics_{network}"
@@ -36,10 +36,7 @@ def get_db_client(network: str) -> Client:
             port=port,
             username=user,
             password=password,
-            database=database,
-            settings={
-                'use_numpy': True
-            }
+            database=database
         )
         # Verify connection
         client.command('SELECT 1')
@@ -165,7 +162,8 @@ def visualize_graph_pyvis(G, height="600px", width="100%"):
     from pyvis.network import Network
     import tempfile
     
-    nt = Network(height=height, width=width, notebook=True, directed=True)
+    # Use notebook=True to ensure compatible template loading, but use write_html to suppress auto-display
+    nt = Network(height=height, width=width, notebook=True, directed=True, cdn_resources='in_line')
     nt.from_nx(G)
     
     # Physics options for better layout
@@ -193,5 +191,50 @@ def visualize_graph_pyvis(G, height="600px", width="100%"):
     
     # Write to temp file
     tmp_name = f"graph_viz_{np.random.randint(1000)}.html"
-    nt.show(tmp_name)
-    return nt
+    # Use write_html instead of show() to prevent side effects (warnings/prints)
+    nt.write_html(tmp_name)
+    
+    # Read file content to embed directly (avoids 404 in some envs)
+    with open(tmp_name, 'r', encoding='utf-8') as f:
+        html_content = f.read()
+        
+    # Cleanup temp file
+    try:
+        os.remove(tmp_name)
+    except:
+        pass
+    
+    import base64
+    from IPython.display import IFrame
+    
+    # Use Data URI to embed the HTML content safely within an IFrame
+    encoded_html = base64.b64encode(html_content.encode('utf-8')).decode('utf-8')
+    data_uri = f"data:text/html;charset=utf-8;base64,{encoded_html}"
+    
+    return IFrame(src=data_uri, width=width, height=height)
+
+def visualize_graph_matplotlib(G, title=None):
+    """
+    Static visualization using NetworkX and Matplotlib.
+    Robust alternative if interactive widgets fail.
+    """
+    import networkx as nx
+    import matplotlib.pyplot as plt
+    
+    plt.figure(figsize=(10, 8))
+    
+    # Extract colors if present
+    node_colors = [G.nodes[n].get('color', '#97C2FC') for n in G.nodes()]
+    labels = {n: G.nodes[n].get('label', str(n)) for n in G.nodes()}
+    
+    pos = nx.spring_layout(G, seed=42)
+    nx.draw(G, pos, with_labels=True, labels=labels, node_color=node_colors,
+            edge_color='gray', node_size=1000, font_size=8, arrows=True)
+            
+    if title:
+        plt.title(title)
+    else:
+        plt.title(G.graph.get('title', 'Pattern Graph'))
+    
+    plt.axis('off')
+    plt.show()
