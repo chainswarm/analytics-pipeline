@@ -16,6 +16,23 @@ sys.path.append(str(PROJECT_ROOT))
 # Load environment variables from project root
 load_dotenv(PROJECT_ROOT / '.env')
 
+# ============================================================================
+# PATTERN DETECTION ARCHITECTURE NOTE
+# ============================================================================
+# Pattern detections are stored in 5 specialized tables based on pattern type:
+#   - analyzers_patterns_cycle (cycle patterns)
+#   - analyzers_patterns_layering (layering paths)
+#   - analyzers_patterns_network (smurfing networks)
+#   - analyzers_patterns_proximity (proximity risk)
+#   - analyzers_patterns_motif (fan-in/fan-out motifs)
+#
+# For backward compatibility, a unified view 'analyzers_pattern_detections'
+# provides UNION ALL access to all pattern types. Queries in this file use
+# the view, so no code changes are needed. The view is transparent.
+#
+# See: packages/storage/schema/README.md for architecture details
+# ============================================================================
+
 def get_db_client(network: str) -> Client:
     """
     Get ClickHouse client connected to the analytics database for the specified network.
@@ -81,6 +98,15 @@ def setup_plotting():
 def build_pattern_graph(pattern_row: Dict[str, Any]) -> 'networkx.DiGraph':
     """
     Constructs a NetworkX DiGraph from a pattern detection row.
+    
+    Pattern Type Mapping (from specialized tables):
+    - 'cycle' -> analyzers_patterns_cycle (cycle_path, cycle_length, cycle_volume_usd)
+    - 'layering_path' -> analyzers_patterns_layering (layering_path, path_depth, source/destination)
+    - 'smurfing_network' -> analyzers_patterns_network (network_members, network_size, network_density)
+    - 'proximity_risk' -> analyzers_patterns_proximity (risk_source_address, distance_to_risk)
+    - 'motif_fanin' -> analyzers_patterns_motif (motif_center_address, motif_participant_count)
+    - 'motif_fanout' -> analyzers_patterns_motif (motif_center_address, motif_participant_count)
+    
     Handles: cycle, layering_path, motif_fanin, motif_fanout.
     """
     import networkx as nx

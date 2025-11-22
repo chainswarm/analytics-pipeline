@@ -178,7 +178,14 @@ class MigrateSchema:
         
         analyzer_schemas = [
             "analyzers_features.sql",
-            "analyzers_pattern_detections.sql",
+            "analyzers_patterns_cycle.sql",
+            "analyzers_patterns_layering.sql",
+            "analyzers_patterns_network.sql",
+            "analyzers_patterns_proximity.sql",
+            "analyzers_patterns_motif.sql",
+            "analyzers_patterns_burst.sql",
+            "analyzers_patterns_threshold.sql",
+            "analyzers_pattern_detections_view.sql",  # Must be AFTER all table files
             "analyzers_computation_audit.sql",
         ]
         

@@ -34,6 +34,7 @@ Analytics Pipeline is a standalone service that provides:
 #### 3. Storage Layer (`packages/storage/`)
 - **Repositories**: Data access for features, patterns, alerts.
 - **Schema Migration**: Auto-migrates schemas to the target isolated database.
+- **Specialized Pattern Tables**: Pattern detections are stored in 5 specialized tables (cycle, layering, network, proximity, motif) for optimal storage and query performance, with a backward-compatible view for unified access. See [`packages/storage/schema/README.md`](packages/storage/schema/README.md) for details.
 
 ## Configuration
 

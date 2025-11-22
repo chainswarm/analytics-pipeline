@@ -1,0 +1,122 @@
+import time
+from typing import Dict, List
+import networkx as nx
+import numpy as np
+from loguru import logger
+
+from packages.analyzers.structural.base_detector import BasePatternDetector
+from packages.storage.constants import PatternTypes, DetectionMethods
+from packages.utils.pattern_utils import generate_pattern_hash, generate_pattern_id
+
+
+class MotifDetector(BasePatternDetector):
+    """
+    Detector for structural motifs in the transaction graph.
+    Identifies fan-in and fan-out patterns that may indicate fund aggregation or distribution.
+    """
+
+    def _validate_config(self) -> None:
+        """Validate that motif_detection configuration is present."""
+        if "motif_detection" not in self.config:
+            raise ValueError("Missing 'motif_detection' section in configuration")
+        if "severity_adjustments" not in self.config:
+            raise ValueError("Missing 'severity_adjustments' section in configuration")
+
+    def detect(self, G: nx.DiGraph) -> List[Dict]:
+        """
+        Detect motif patterns in the graph (fan-in and fan-out).
+        
+        Args:
+            G: NetworkX directed graph to analyze
+            
+        Returns:
+            List of detected motif pattern dictionaries
+        """
+        patterns_by_id = {}
+        motif_config = self.config["motif_detection"]
+        
+        confidence_score = motif_config["confidence_score"]
+        risk_score_multiplier = motif_config["risk_score_multiplier"]
+        base_severity = motif_config["base_severity"]
+        degree_percentile = motif_config["degree_percentile_threshold"]
+        fanin_max_out_degree = motif_config["fanin_max_out_degree"]
+        fanout_max_in_degree = motif_config["fanout_max_in_degree"]
+        
+        in_degrees = [G.in_degree(node) for node in G.nodes()]
+        out_degrees = [G.out_degree(node) for node in G.nodes()]
+        
+        if not in_degrees or not out_degrees:
+            return []
+            
+        in_degree_threshold = np.percentile(in_degrees, degree_percentile)
+        out_degree_threshold = np.percentile(out_degrees, degree_percentile)
+        
+        for node in G.nodes():
+            in_deg = G.in_degree(node)
+            out_deg = G.out_degree(node)
+            
+            # Detect fan-in motif
+            if in_deg >= in_degree_threshold and out_deg <= fanin_max_out_degree:
+                in_neighbors = list(G.predecessors(node))
+                all_addresses = [node] + in_neighbors
+                pattern_hash = generate_pattern_hash(PatternTypes.MOTIF_FANIN, sorted(all_addresses))
+                pattern_id = generate_pattern_id(PatternTypes.MOTIF_FANIN, pattern_hash)
+                
+                if pattern_id not in patterns_by_id:
+                    calculated_severity = min(in_deg / max(in_degree_threshold, 1), 1.0) * base_severity
+                    severity_score = self._adjust_severity_for_trust(calculated_severity, all_addresses)
+                    
+                    fanin_volume = sum(data['amount_usd_sum'] for _, _, data in G.in_edges(node, data=True))
+                    
+                    patterns_by_id[pattern_id] = {
+                        'pattern_id': pattern_id,
+                        'pattern_type': PatternTypes.MOTIF_FANIN,
+                        'pattern_hash': pattern_hash,
+                        'addresses_involved': all_addresses,
+                        'address_roles': ['center'] + ['source'] * len(in_neighbors),
+                        'severity_score': severity_score,
+                        'confidence_score': confidence_score,
+                        'risk_score': severity_score * risk_score_multiplier,
+                        'motif_type': 'fanin',
+                        'motif_center_address': node,
+                        'motif_participant_count': in_deg + out_deg,
+                        'detection_timestamp': int(time.time()),
+                        'evidence_transaction_count': in_deg,
+                        'evidence_volume_usd': fanin_volume,
+                        'detection_method': DetectionMethods.MOTIF_DETECTION,
+                        'anomaly_score': severity_score
+                    }
+            
+            # Detect fan-out motif
+            if out_deg >= out_degree_threshold and in_deg <= fanout_max_in_degree:
+                out_neighbors = list(G.successors(node))
+                all_addresses = [node] + out_neighbors
+                pattern_hash = generate_pattern_hash(PatternTypes.MOTIF_FANOUT, sorted(all_addresses))
+                pattern_id = generate_pattern_id(PatternTypes.MOTIF_FANOUT, pattern_hash)
+                
+                if pattern_id not in patterns_by_id:
+                    calculated_severity = min(out_deg / max(out_degree_threshold, 1), 1.0) * base_severity
+                    severity_score = self._adjust_severity_for_trust(calculated_severity, all_addresses)
+                    
+                    fanout_volume = sum(data['amount_usd_sum'] for _, _, data in G.out_edges(node, data=True))
+                    
+                    patterns_by_id[pattern_id] = {
+                        'pattern_id': pattern_id,
+                        'pattern_type': PatternTypes.MOTIF_FANOUT,
+                        'pattern_hash': pattern_hash,
+                        'addresses_involved': all_addresses,
+                        'address_roles': ['center'] + ['destination'] * len(out_neighbors),
+                        'severity_score': severity_score,
+                        'confidence_score': confidence_score,
+                        'risk_score': severity_score * risk_score_multiplier,
+                        'motif_type': 'fanout',
+                        'motif_center_address': node,
+                        'motif_participant_count': in_deg + out_deg,
+                        'detection_timestamp': int(time.time()),
+                        'evidence_transaction_count': out_deg,
+                        'evidence_volume_usd': fanout_volume,
+                        'detection_method': DetectionMethods.MOTIF_DETECTION,
+                        'anomaly_score': severity_score
+                    }
+                
+        return list(patterns_by_id.values())

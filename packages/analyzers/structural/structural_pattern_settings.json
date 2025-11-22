@@ -7,7 +7,13 @@
     "risk_score_multiplier": 1.2,
     "volume_severity_weight": 0.4,
     "length_severity_weight": 0.6,
-    "volume_threshold": 100000
+    "volume_threshold": 100000,
+    "network_overrides": {
+      "torus": {
+        "max_cycle_length": 8,
+        "volume_threshold": 50000
+      }
+    }
   },
   "path_analysis": {
     "min_path_length": 3,
@@ -22,7 +28,13 @@
     "layering_min_volume": 1000,
     "layering_length_weight": 0.7,
     "layering_volume_weight": 0.3,
-    "layering_volume_threshold": 50000
+    "layering_volume_threshold": 50000,
+    "network_overrides": {
+      "bittensor": {
+        "max_path_length": 6,
+        "layering_min_volume": 500
+      }
+    }
   },
   "proximity_analysis": {
     "max_distance": 3,
@@ -50,6 +62,34 @@
     "degree_percentile_threshold": 95,
     "fanin_max_out_degree": 3,
     "fanout_max_in_degree": 3
+  },
+  "burst_detection": {
+    "min_burst_intensity": 3.0,
+    "min_burst_transactions": 10,
+    "time_window_seconds": 3600,
+    "z_score_threshold": 2.0,
+    "confidence_score": 0.75,
+    "risk_score_multiplier": 0.8,
+    "intensity_severity_weight": 0.4,
+    "volume_severity_weight": 0.3,
+    "z_score_severity_weight": 0.3
+  },
+  "threshold_detection": {
+    "reporting_threshold_usd": 10000,
+    "min_transactions_near_threshold": 5,
+    "near_threshold_lower_pct": 0.80,
+    "near_threshold_upper_pct": 0.99,
+    "clustering_score_threshold": 0.7,
+    "size_consistency_threshold": 0.8,
+    "confidence_score": 0.80,
+    "risk_score_multiplier": 0.9,
+    "clustering_severity_weight": 0.4,
+    "consistency_severity_weight": 0.4,
+    "temporal_severity_weight": 0.2,
+    "custom_thresholds": {
+      "large_transaction": 50000,
+      "institutional": 100000
+    }
   },
   "scc_analysis": {
     "min_scc_size": 3,

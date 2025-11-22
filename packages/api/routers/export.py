@@ -88,8 +88,28 @@ async def export_patterns(
     offset: int = Query(0, description="Offset (for JSON)")
 ):
     """
-    Export patterns from analyzers_pattern_detections table.
-    Supports Parquet export (Stream) or JSON pagination based on Accept header.
+    Export patterns from the pattern detection system.
+    
+    **Pattern Storage Architecture**:
+    Patterns are stored in 5 specialized tables based on pattern type:
+    - analyzers_patterns_cycle (cycle patterns)
+    - analyzers_patterns_layering (layering paths)
+    - analyzers_patterns_network (smurfing networks)
+    - analyzers_patterns_proximity (proximity risk)
+    - analyzers_patterns_motif (fan-in/fan-out motifs)
+    
+    This endpoint queries the 'analyzers_pattern_detections' VIEW, which provides
+    backward-compatible UNION ALL access to all specialized tables. This architecture:
+    - Eliminates NULL columns for better storage efficiency
+    - Enables pattern-specific indexing for faster queries
+    - Maintains full backward compatibility for API consumers
+    
+    **Response Format**:
+    - Parquet: Set Accept header to 'application/x-parquet' for bulk export
+    - JSON: Default response with pagination support
+    
+    All pattern types are available through this single endpoint.
+    See packages/storage/schema/README.md for architecture details.
     """
     try:
         params = get_connection_params(network)
