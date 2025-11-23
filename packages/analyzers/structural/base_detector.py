@@ -58,15 +58,11 @@ class BasePatternDetector(ABC):
                 - pattern_hash: Hash for deduplication
                 - addresses_involved: List of involved addresses
                 - address_roles: Role of each address in the pattern
-                - severity_score: Pattern severity (0-1)
-                - confidence_score: Detection confidence (0-1)
-                - risk_score: Overall risk score
                 - detection_timestamp: Unix timestamp of detection
                 - evidence_transaction_count: Number of transactions
                 - evidence_volume_usd: Total USD volume
                 - detection_method: Method used for detection
-                - anomaly_score: Anomaly indicator
-                - (pattern-specific fields)
+                - (pattern-specific factual fields)
         """
         pass
 
@@ -155,71 +151,15 @@ class BasePatternDetector(ABC):
         return (address_type in fraudulent_address_types or
                 trust_level == TrustLevels.BLACKLISTED)
 
-    def _adjust_severity_for_trust(self, base_severity: float, participants: List[str]) -> float:
-        """
-        Adjust pattern severity based on trust levels of participants.
-        
-        Args:
-            base_severity: Base severity score before adjustment
-            participants: List of addresses involved in the pattern
-            
-        Returns:
-            Adjusted severity score
-        """
-        if not participants:
-            return base_severity
-            
-        # Get configuration
-        severity_config = self.config["severity_adjustments"]
-        trust_reduction_factor = severity_config["trust_reduction_factor"]
-        fraud_increase_factor = severity_config["fraud_increase_factor"]
-        
-        trusted_count = sum(1 for addr in participants if self._is_trusted_address(addr))
-        fraudulent_count = sum(1 for addr in participants if self._is_fraudulent_address(addr))
-        
-        adjusted_severity = base_severity
-        
-        # Reduce severity if trusted addresses involved
-        if trusted_count > 0:
-            trust_reduction = trust_reduction_factor * trusted_count / len(participants)
-            adjusted_severity *= (1.0 - trust_reduction)
-        
-        # Increase severity if fraudulent addresses involved
-        if fraudulent_count > 0:
-            fraud_increase = fraud_increase_factor * fraudulent_count / len(participants)
-            adjusted_severity *= (1.0 + fraud_increase)
-        
-        return min(adjusted_severity, 1.0)
-
-    def _calculate_trust_risk_modifier(self, address: str) -> float:
-        """
-        Calculate risk modifier based on address trust level.
-        
-        Args:
-            address: Address to evaluate
-            
-        Returns:
-            Risk modifier value
-        """
-        severity_config = self.config["severity_adjustments"]
-        
-        if self._is_trusted_address(address):
-            return severity_config["trust_risk_modifier"]
-        elif self._is_fraudulent_address(address):
-            return severity_config["fraud_risk_modifier"]
-        else:
-            return severity_config["unknown_risk_modifier"]
-
     def _get_address_context(self, address: str) -> Dict:
         """
-        Get trust and type context for address.
+        Get factual context for address from labels.
         
         Args:
             address: Address to get context for
             
         Returns:
-            Dictionary containing trust_level, address_type, is_trusted, 
-            is_fraudulent, and risk_modifier
+            Dictionary containing trust_level, address_type, is_trusted, is_fraudulent (factual observations)
         """
         label_info = self._address_labels_cache.get(address, {})
         
@@ -227,6 +167,5 @@ class BasePatternDetector(ABC):
             'trust_level': label_info.get('trust_level', TrustLevels.UNVERIFIED),
             'address_type': label_info.get('address_type', AddressTypes.UNKNOWN),
             'is_trusted': self._is_trusted_address(address),
-            'is_fraudulent': self._is_fraudulent_address(address),
-            'risk_modifier': self._calculate_trust_risk_modifier(address)
+            'is_fraudulent': self._is_fraudulent_address(address)
         }

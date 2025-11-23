@@ -33,9 +33,6 @@ class MotifDetector(BasePatternDetector):
         patterns_by_id = {}
         motif_config = self.config["motif_detection"]
         
-        confidence_score = motif_config["confidence_score"]
-        risk_score_multiplier = motif_config["risk_score_multiplier"]
-        base_severity = motif_config["base_severity"]
         degree_percentile = motif_config["degree_percentile_threshold"]
         fanin_max_out_degree = motif_config["fanin_max_out_degree"]
         fanout_max_in_degree = motif_config["fanout_max_in_degree"]
@@ -61,8 +58,6 @@ class MotifDetector(BasePatternDetector):
                 pattern_id = generate_pattern_id(PatternTypes.MOTIF_FANIN, pattern_hash)
                 
                 if pattern_id not in patterns_by_id:
-                    calculated_severity = min(in_deg / max(in_degree_threshold, 1), 1.0) * base_severity
-                    severity_score = self._adjust_severity_for_trust(calculated_severity, all_addresses)
                     
                     fanin_volume = sum(data['amount_usd_sum'] for _, _, data in G.in_edges(node, data=True))
                     
@@ -72,17 +67,13 @@ class MotifDetector(BasePatternDetector):
                         'pattern_hash': pattern_hash,
                         'addresses_involved': all_addresses,
                         'address_roles': ['center'] + ['source'] * len(in_neighbors),
-                        'severity_score': severity_score,
-                        'confidence_score': confidence_score,
-                        'risk_score': severity_score * risk_score_multiplier,
                         'motif_type': 'fanin',
                         'motif_center_address': node,
                         'motif_participant_count': in_deg + out_deg,
                         'detection_timestamp': int(time.time()),
                         'evidence_transaction_count': in_deg,
                         'evidence_volume_usd': fanin_volume,
-                        'detection_method': DetectionMethods.MOTIF_DETECTION,
-                        'anomaly_score': severity_score
+                        'detection_method': DetectionMethods.MOTIF_DETECTION
                     }
             
             # Detect fan-out motif
@@ -93,8 +84,6 @@ class MotifDetector(BasePatternDetector):
                 pattern_id = generate_pattern_id(PatternTypes.MOTIF_FANOUT, pattern_hash)
                 
                 if pattern_id not in patterns_by_id:
-                    calculated_severity = min(out_deg / max(out_degree_threshold, 1), 1.0) * base_severity
-                    severity_score = self._adjust_severity_for_trust(calculated_severity, all_addresses)
                     
                     fanout_volume = sum(data['amount_usd_sum'] for _, _, data in G.out_edges(node, data=True))
                     
@@ -104,17 +93,13 @@ class MotifDetector(BasePatternDetector):
                         'pattern_hash': pattern_hash,
                         'addresses_involved': all_addresses,
                         'address_roles': ['center'] + ['destination'] * len(out_neighbors),
-                        'severity_score': severity_score,
-                        'confidence_score': confidence_score,
-                        'risk_score': severity_score * risk_score_multiplier,
                         'motif_type': 'fanout',
                         'motif_center_address': node,
                         'motif_participant_count': in_deg + out_deg,
                         'detection_timestamp': int(time.time()),
                         'evidence_transaction_count': out_deg,
                         'evidence_volume_usd': fanout_volume,
-                        'detection_method': DetectionMethods.MOTIF_DETECTION,
-                        'anomaly_score': severity_score
+                        'detection_method': DetectionMethods.MOTIF_DETECTION
                     }
                 
         return list(patterns_by_id.values())

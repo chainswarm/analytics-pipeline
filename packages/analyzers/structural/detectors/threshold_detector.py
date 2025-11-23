@@ -41,8 +41,6 @@ class ThresholdDetector(BasePatternDetector):
         min_transactions = threshold_config.get("min_transactions_near_threshold", 5)
         clustering_threshold = threshold_config.get("clustering_score_threshold", 0.7)
         consistency_threshold = threshold_config.get("size_consistency_threshold", 0.8)
-        confidence_score = threshold_config.get("confidence_score", 0.80)
-        risk_score_multiplier = threshold_config.get("risk_score_multiplier", 0.9)
         
         # Analyze each node for threshold evasion
         for node in G.nodes():
@@ -62,8 +60,6 @@ class ThresholdDetector(BasePatternDetector):
                     if pattern_id in patterns_by_id:
                         continue
                     
-                    base_severity = evasion_pattern['threshold_avoidance_score']
-                    severity_score = self._adjust_severity_for_trust(base_severity, [node])
                     
                     patterns_by_id[pattern_id] = {
                         'pattern_id': pattern_id,
@@ -71,9 +67,6 @@ class ThresholdDetector(BasePatternDetector):
                         'pattern_hash': pattern_hash,
                         'addresses_involved': [node],
                         'address_roles': ['primary_address'],
-                        'severity_score': severity_score,
-                        'confidence_score': confidence_score,
-                        'risk_score': min(severity_score * risk_score_multiplier, 1.0),
                         'primary_address': node,
                         'threshold_value': threshold_value,
                         'threshold_type': threshold_type,
@@ -89,8 +82,7 @@ class ThresholdDetector(BasePatternDetector):
                         'detection_timestamp': int(time.time()),
                         'evidence_transaction_count': evasion_pattern['transactions_near_threshold'],
                         'evidence_volume_usd': evasion_pattern['avg_transaction_size'] * evasion_pattern['transactions_near_threshold'],
-                        'detection_method': DetectionMethods.TEMPORAL_ANALYSIS,
-                        'anomaly_score': severity_score
+                        'detection_method': DetectionMethods.TEMPORAL_ANALYSIS
                     }
         
         return list(patterns_by_id.values())
@@ -201,11 +193,7 @@ class ThresholdDetector(BasePatternDetector):
         avg_daily_transactions = len(near_threshold_txs)  # Placeholder
         temporal_spread_score = 0.5  # Placeholder
         
-        # Calculate overall avoidance score
-        threshold_avoidance_score = self._calculate_avoidance_score(
-            clustering_score, size_consistency, temporal_spread_score
-        )
-        
+        # Return only factual measurements, no composite scoring
         return {
             'transactions_near_threshold': len(near_threshold_txs),
             'avg_transaction_size': float(np.mean(near_amounts)),
@@ -215,37 +203,5 @@ class ThresholdDetector(BasePatternDetector):
             'unique_days': unique_days,
             'avg_daily_transactions': avg_daily_transactions,
             'temporal_spread_score': temporal_spread_score,
-            'threshold_avoidance_score': threshold_avoidance_score
+            'threshold_avoidance_score': clustering_score  # Simple factual metric: % near threshold
         }
-
-    def _calculate_avoidance_score(
-        self,
-        clustering_score: float,
-        consistency_score: float,
-        temporal_score: float
-    ) -> float:
-        """
-        Calculate overall threshold avoidance score.
-        
-        Args:
-            clustering_score: How concentrated txs are near threshold
-            consistency_score: How consistent the transaction sizes are
-            temporal_score: How spread out the transactions are over time
-            
-        Returns:
-            Avoidance score between 0 and 1
-        """
-        threshold_config = self.config["threshold_detection"]
-        
-        # Weight factors
-        clustering_weight = threshold_config.get("clustering_severity_weight", 0.4)
-        consistency_weight = threshold_config.get("consistency_severity_weight", 0.4)
-        temporal_weight = threshold_config.get("temporal_severity_weight", 0.2)
-        
-        score = (
-            clustering_score * clustering_weight +
-            consistency_score * consistency_weight +
-            temporal_score * temporal_weight
-        )
-        
-        return min(score, 1.0)

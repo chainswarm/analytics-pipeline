@@ -145,20 +145,7 @@ class FeatureRepository(BaseRepository):
                     float(feature.get('flow_burstiness', 0.0)),
                     float(feature.get('transaction_regularity', 0.0)),
                     float(feature.get('amount_predictability', 0.0)),
-                    
-                    # Risk and anomaly features (from schema)
-                    # float(feature['behavioral_anomaly_score']),
-                    # float(feature['graph_anomaly_score']),
-                    # float(feature['neighborhood_anomaly_score']),
-                    # float(feature['global_anomaly_score']),
-                    # int(feature['outlier_transactions']),
-                    # float(feature['suspicious_pattern_score']),
-                    
-                    # Quality scores
-                    float(feature['completeness_score']),
-                    float(feature['quality_score']),
-                    float(feature['outlier_score']),
-                    float(feature.get('confidence_score', 0.0)),  # From schema
+
                     
                     # Temporal metadata (from schema)
                     int(feature.get('first_activity_timestamp', 0)),
@@ -221,8 +208,6 @@ class FeatureRepository(BaseRepository):
                 # 'behavioral_anomaly_score', 'graph_anomaly_score', 'neighborhood_anomaly_score', # Missing in DB
                 # 'global_anomaly_score', # Missing in DB
                 # 'outlier_transactions', 'suspicious_pattern_score', # Missing in DB
-                # Quality scores
-                'completeness_score', 'quality_score', 'outlier_score', 'confidence_score',
                 # Temporal metadata (from schema)
                 'first_activity_timestamp', 'last_activity_timestamp',
                 # Asset diversity (schema)
@@ -311,18 +296,18 @@ class FeatureRepository(BaseRepository):
         result = self.client.query(query, parameters=params)
         return int(result.result_rows[0][0])
 
-    def get_features_by_quality(self, min_quality_score: Decimal, limit: int = 1000) -> List[Dict]:
-
+    def get_features_by_quality(self, min_total_volume: Decimal, limit: int = 1000) -> List[Dict]:
+        """Get features by volume instead of quality score."""
         params = {
-            "min_quality": str(min_quality_score),
+            "min_volume": str(min_total_volume),
             "limit": int(limit),
         }
-        
+
         query = f"""
         SELECT *
         FROM {self.features_table_name}
-        WHERE quality_score >= %(min_quality)s
-        ORDER BY quality_score DESC
+        WHERE total_volume_usd >= %(min_volume)s
+        ORDER BY total_volume_usd DESC
         LIMIT %(limit)s
         """
         
@@ -343,7 +328,7 @@ class FeatureRepository(BaseRepository):
         query = f"""
         SELECT *
         FROM {self.features_table_name}
-        ORDER BY quality_score DESC, total_volume_usd DESC
+        ORDER BY total_volume_usd DESC
         LIMIT %(limit)s
         """
         
@@ -368,10 +353,9 @@ class FeatureRepository(BaseRepository):
         query = f"""
         SELECT
             count() as total_addresses,
-            countIf(quality_score >= 0.8) as high_quality,
-            countIf(quality_score >= 0.5 AND quality_score < 0.8) as medium_quality,
-            countIf(quality_score < 0.5) as low_quality,
-            countIf(outlier_score > 0.95) as high_outliers
+            countIf(total_volume_usd >= 100000) as high_volume,
+            countIf(total_volume_usd >= 10000 AND total_volume_usd < 100000) as medium_volume,
+            countIf(total_volume_usd < 10000) as low_volume
         FROM {self.features_table_name}
         """
         
@@ -484,9 +468,7 @@ class FeatureRepository(BaseRepository):
                 if isinstance(value, (int, float)):
                     updated_row[field_index] = float(value) if field_name in [
                         'pagerank', 'betweenness', 'closeness', 'clustering_coefficient',
-                        'centrality_score', 'behavioral_anomaly_score', 'graph_anomaly_score',
-                        'neighborhood_anomaly_score', 'global_anomaly_score', 'suspicious_pattern_score',
-                        'confidence_score', 'flow_reciprocity_entropy', 'counterparty_stability',
+                 'flow_reciprocity_entropy', 'counterparty_stability',
                         'flow_burstiness', 'transaction_regularity', 'amount_predictability'
                     ] else int(value)
                 elif isinstance(value, bool):
@@ -520,10 +502,7 @@ class FeatureRepository(BaseRepository):
             'total_volume_usd': '0',
             'tx_in_count': 0,
             'tx_out_count': 0,
-            'tx_total_count': 0,
-            'quality_score': 0.0,
-            'completeness_score': 0.0,
-            'outlier_score': 0.0
+            'tx_total_count': 0
         }
         
         # Apply defaults

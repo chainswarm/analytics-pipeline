@@ -71,18 +71,6 @@ class NetworkDetector(BasePatternDetector):
             if scc_size < scc_config["min_scc_size"]:
                 continue
                 
-            if std_size > 0:
-                size_z_score = abs(scc_size - mean_size) / std_size
-                z_score_norm = scc_config["z_score_normalization"]
-                base_anomaly_score = min(size_z_score / z_score_norm, 1.0)
-            else:
-                base_anomaly_score = 0.0
-                
-            anomaly_score = self._adjust_severity_for_trust(base_anomaly_score, list(scc))
-                
-            if anomaly_score < scc_config["anomaly_threshold"]:
-                continue
-                
             sorted_scc = sorted(list(scc))
             pattern_hash = generate_pattern_hash(PatternTypes.SMURFING_NETWORK, sorted_scc)
             pattern_id = generate_pattern_id('scc', pattern_hash)
@@ -102,17 +90,13 @@ class NetworkDetector(BasePatternDetector):
                 'pattern_hash': pattern_hash,
                 'addresses_involved': sorted_scc,
                 'address_roles': ['participant'] * len(sorted_scc),
-                'severity_score': anomaly_score,
-                'confidence_score': scc_config["confidence_score"],
-                'risk_score': anomaly_score * scc_config["risk_score_multiplier"],
                 'network_members': sorted_scc,
                 'network_size': scc_size,
                 'network_density': density,
                 'detection_timestamp': int(time.time()),
                 'evidence_transaction_count': edge_count,
                 'evidence_volume_usd': total_volume,
-                'detection_method': DetectionMethods.SCC_ANALYSIS,
-                'anomaly_score': anomaly_score
+                'detection_method': DetectionMethods.SCC_ANALYSIS
             }
                 
         return list(patterns_by_id.values())
@@ -132,8 +116,6 @@ class NetworkDetector(BasePatternDetector):
         
         min_community_size = network_config["min_community_size"]
         max_community_size = network_config["max_community_size"]
-        confidence_score = network_config["confidence_score"]
-        risk_score_multiplier = network_config["risk_score_multiplier"]
         
         try:
             G_undirected = G.to_undirected()
@@ -158,8 +140,6 @@ class NetworkDetector(BasePatternDetector):
                     density = nx.density(community_graph)
                     total_volume = sum(data.get('amount_usd_sum', 0) for _, _, data in community_graph.edges(data=True))
                     
-                    base_severity = self._calculate_smurfing_severity(community_graph)
-                    severity_score = self._adjust_severity_for_trust(base_severity, list(community))
                     
                     hub_addresses = self._identify_hubs_in_network(community_graph)
                     
@@ -169,9 +149,6 @@ class NetworkDetector(BasePatternDetector):
                         'pattern_hash': pattern_hash,
                         'addresses_involved': sorted_community,
                         'address_roles': ['hub' if addr in hub_addresses else 'participant' for addr in sorted_community],
-                        'severity_score': severity_score,
-                        'confidence_score': confidence_score,
-                        'risk_score': severity_score * risk_score_multiplier,
                         'network_members': sorted_community,
                         'network_size': community_size,
                         'network_density': density,
@@ -179,8 +156,7 @@ class NetworkDetector(BasePatternDetector):
                         'detection_timestamp': int(time.time()),
                         'evidence_transaction_count': community_graph.number_of_edges(),
                         'evidence_volume_usd': total_volume,
-                        'detection_method': DetectionMethods.NETWORK_ANALYSIS,
-                        'anomaly_score': severity_score
+                        'detection_method': DetectionMethods.NETWORK_ANALYSIS
                     }
                         
         except Exception as e:
@@ -220,27 +196,6 @@ class NetworkDetector(BasePatternDetector):
         # High density + small transactions = potential smurfing
         density = nx.density(community_graph)
         return small_tx_ratio > small_tx_ratio_threshold and density > density_threshold
-
-    def _calculate_smurfing_severity(self, community_graph: nx.DiGraph) -> float:
-        """
-        Calculate severity score for smurfing network.
-        
-        Args:
-            community_graph: Subgraph representing the smurfing network
-            
-        Returns:
-            Severity score between 0 and 1
-        """
-        network_config = self.config["network_analysis"]
-        
-        density = nx.density(community_graph)
-        size_factor = min(community_graph.number_of_nodes() / network_config["max_size_factor"], 1.0)
-        density_factor = min(density / network_config["max_density_factor"], 1.0)
-        
-        size_weight = network_config["size_severity_weight"]
-        density_weight = network_config["density_severity_weight"]
-        
-        return (size_factor * size_weight + density_factor * density_weight)
 
     def _identify_hubs_in_network(self, community_graph: nx.DiGraph) -> List[str]:
         """

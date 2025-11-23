@@ -52,8 +52,6 @@ class BurstDetector(BasePatternDetector):
         min_burst_transactions = burst_config.get("min_burst_transactions", 10)
         time_window_seconds = burst_config.get("time_window_seconds", 3600)  # 1 hour default
         z_score_threshold = burst_config.get("z_score_threshold", 2.0)
-        confidence_score = burst_config.get("confidence_score", 0.75)
-        risk_score_multiplier = burst_config.get("risk_score_multiplier", 0.8)
         
         # Analyze each node for burst patterns
         for node in G.nodes():
@@ -72,8 +70,6 @@ class BurstDetector(BasePatternDetector):
                 if pattern_id in patterns_by_id:
                     continue
                 
-                base_severity = self._calculate_burst_severity(burst_pattern)
-                severity_score = self._adjust_severity_for_trust(base_severity, [node])
                 
                 patterns_by_id[pattern_id] = {
                     'pattern_id': pattern_id,
@@ -81,9 +77,6 @@ class BurstDetector(BasePatternDetector):
                     'pattern_hash': pattern_hash,
                     'addresses_involved': [node],
                     'address_roles': ['burst_source'],
-                    'severity_score': severity_score,
-                    'confidence_score': confidence_score,
-                    'risk_score': min(severity_score * risk_score_multiplier, 1.0),
                     'burst_address': node,
                     'burst_start_timestamp': burst_pattern['burst_start_timestamp'],
                     'burst_end_timestamp': burst_pattern['burst_end_timestamp'],
@@ -99,8 +92,7 @@ class BurstDetector(BasePatternDetector):
                     'detection_timestamp': int(time.time()),
                     'evidence_transaction_count': burst_pattern['burst_transaction_count'],
                     'evidence_volume_usd': burst_pattern['burst_volume_usd'],
-                    'detection_method': DetectionMethods.TEMPORAL_ANALYSIS,
-                    'anomaly_score': severity_score
+                    'detection_method': DetectionMethods.TEMPORAL_ANALYSIS
                 }
         
         return list(patterns_by_id.values())
@@ -157,33 +149,3 @@ class BurstDetector(BasePatternDetector):
         # 4. Return burst details if thresholds exceeded
         
         return None
-
-    def _calculate_burst_severity(self, burst_pattern: Dict) -> float:
-        """
-        Calculate severity score for a burst pattern.
-        
-        Args:
-            burst_pattern: Dictionary containing burst metrics
-            
-        Returns:
-            Severity score between 0 and 1
-        """
-        burst_config = self.config["burst_detection"]
-        
-        # Weight factors
-        intensity_weight = burst_config.get("intensity_severity_weight", 0.4)
-        volume_weight = burst_config.get("volume_severity_weight", 0.3)
-        z_score_weight = burst_config.get("z_score_severity_weight", 0.3)
-        
-        # Normalize factors to 0-1 range
-        intensity_factor = min(burst_pattern['burst_intensity'] / 10.0, 1.0)
-        volume_factor = min(burst_pattern['burst_volume_usd'] / 100000.0, 1.0)  # $100k threshold
-        z_score_factor = min(burst_pattern['z_score'] / 5.0, 1.0)  # z-score of 5 = max
-        
-        severity = (
-            intensity_factor * intensity_weight +
-            volume_factor * volume_weight +
-            z_score_factor * z_score_weight
-        )
-        
-        return min(severity, 1.0)

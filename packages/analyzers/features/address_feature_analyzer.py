@@ -1,3 +1,4 @@
+import statistics
 from typing import Dict, List, Optional
 from decimal import Decimal
 import numpy as np
@@ -8,6 +9,7 @@ from packages.storage.repositories.money_flows_repository import MoneyFlowsRepos
 from packages.storage.repositories.transfer_aggregation_repository import TransferAggregationRepository
 from packages.storage.repositories.feature_repository import FeatureRepository
 from packages.storage.repositories.transfer_repository import TransferRepository
+from packages.analyzers.features.feature_constants import BEHAVIORAL_TEMPORAL_FEATURES, GRAPH_FEATURES, NEIGHBORHOOD_FEATURES
 from cdlib import algorithms as cd_algorithms
 from collections import defaultdict
 
@@ -162,7 +164,6 @@ class AddressFeatureAnalyzer:
                     'suspicious_pattern_score': 0.0
                 })
 
-                all_features.update(self._compute_feature_quality(all_features))
                 patterns = patterns_map.get(address, {})
                 summaries = summaries_map.get(address, {})
                 
@@ -179,8 +180,7 @@ class AddressFeatureAnalyzer:
                     'small_transaction_ratio': float(behavioral_features.get('structuring_score') or 0.0),
                     'first_activity_timestamp': int(summaries.get('first_timestamp') or self.start_timestamp),
                     'last_activity_timestamp': int(summaries.get('last_timestamp') or self.end_timestamp),
-                    'window_start_timestamp': self.start_timestamp, 'window_end_timestamp': self.end_timestamp,
-                    'confidence_score': 1.0
+                    'window_start_timestamp': self.start_timestamp, 'window_end_timestamp': self.end_timestamp
                 })
                 chunk_features_list.append(all_features)
             all_features_list.extend(chunk_features_list)
@@ -434,19 +434,6 @@ class AddressFeatureAnalyzer:
             'intraday_volume_ratio': float(max(hourly_volumes) / (sum(non_zero_volumes) / 24.0)) if sum(non_zero_volumes) > 0 else 0.0,
             'hourly_transaction_entropy': float(self._calculate_shannon_entropy([c/total_txs for c in hourly_activity if c>0])) if total_txs > 0 else 0.0,
             'volume_concentration_score': float(self._calculate_gini_coefficient(non_zero_volumes))
-        }
-
-    def _compute_feature_quality(self, features: Dict) -> Dict:
-        total_features = len([v for v in features.values() if isinstance(v, (int, float, Decimal)) and v != 0])
-        null_features = len([v for v in features.values() if v is None or (isinstance(v, (int, float)) and v == 0)])
-        
-        completeness = 1.0 - (null_features / max(total_features + null_features, 1))
-        quality = completeness * 0.7 + 0.3
-        
-        return {
-            'completeness_score': float(completeness),
-            'quality_score': float(quality),
-            'outlier_score': 0.0
         }
 
     def _extract_directional_flow_features_cached(self, address: str, flows: List[Dict]) -> Dict:

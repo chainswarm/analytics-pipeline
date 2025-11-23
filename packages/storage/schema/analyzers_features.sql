@@ -108,7 +108,6 @@ CREATE OR REPLACE TABLE analyzers_features (
     is_new_address Boolean,             -- First seen in current window
     is_dormant_reactivated Boolean,     -- Previously inactive, now active
 
-
     -- Supporting metrics for classification
     unique_recipients_count UInt32,     -- Number of unique addresses received funds from
     unique_senders_count UInt32,        -- Number of unique addresses sent funds to

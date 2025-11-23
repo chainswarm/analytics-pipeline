@@ -29,7 +29,8 @@
     }
   },
   "proximity_analysis": {
-    "max_distance": 3
+    "max_distance": 3,
+    "distance_decay_factor": 1.0
   },
   "network_analysis": {
     "min_community_size": 5,

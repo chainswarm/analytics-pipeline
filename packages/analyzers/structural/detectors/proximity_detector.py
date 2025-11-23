@@ -35,8 +35,6 @@ class ProximityDetector(BasePatternDetector):
         proximity_config = self.config["proximity_analysis"]
         
         max_distance = proximity_config["max_distance"]
-        confidence_score = proximity_config["confidence_score"]
-        base_severity = proximity_config["base_severity"]
         distance_decay_factor = proximity_config["distance_decay_factor"]
         
         all_addresses = list(G.nodes())
@@ -67,8 +65,6 @@ class ProximityDetector(BasePatternDetector):
                         continue
                     
                     risk_propagation = distance_decay_factor / (distance + 1)
-                    calculated_severity = risk_propagation * base_severity
-                    severity_score = self._adjust_severity_for_trust(calculated_severity, [address])
                     
                     address_volume = sum(data['amount_usd_sum'] for _, _, data in G.in_edges(address, data=True))
                     address_volume += sum(data['amount_usd_sum'] for _, _, data in G.out_edges(address, data=True))
@@ -79,17 +75,13 @@ class ProximityDetector(BasePatternDetector):
                         'pattern_hash': pattern_hash,
                         'addresses_involved': [risk_addr, address],
                         'address_roles': ['risk_source', 'suspect'],
-                        'severity_score': severity_score,
-                        'confidence_score': confidence_score,
-                        'risk_score': severity_score,
                         'risk_source_address': risk_addr,
                         'distance_to_risk': distance,
                         'risk_propagation_score': risk_propagation,
                         'detection_timestamp': int(time.time()),
                         'evidence_transaction_count': G.in_degree(address) + G.out_degree(address),
                         'evidence_volume_usd': address_volume,
-                        'detection_method': DetectionMethods.PROXIMITY_ANALYSIS,
-                        'anomaly_score': severity_score
+                        'detection_method': DetectionMethods.PROXIMITY_ANALYSIS
                     }
                     
             except Exception as e:
