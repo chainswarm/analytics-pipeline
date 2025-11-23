@@ -19,8 +19,6 @@ class MotifDetector(BasePatternDetector):
         """Validate that motif_detection configuration is present."""
         if "motif_detection" not in self.config:
             raise ValueError("Missing 'motif_detection' section in configuration")
-        if "severity_adjustments" not in self.config:
-            raise ValueError("Missing 'severity_adjustments' section in configuration")
 
     def detect(self, G: nx.DiGraph) -> List[Dict]:
         """

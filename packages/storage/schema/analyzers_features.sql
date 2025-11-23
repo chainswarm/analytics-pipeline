@@ -113,12 +113,6 @@ CREATE OR REPLACE TABLE analyzers_features (
     unique_recipients_count UInt32,     -- Number of unique addresses received funds from
     unique_senders_count UInt32,        -- Number of unique addresses sent funds to
 
-    -- Feature quality and metadata
-    completeness_score Float32,         -- Feature completeness score (0-1)
-    quality_score Float32,              -- Overall feature quality score (0-1)
-    outlier_score Float32,              -- Statistical outlier score (0-1)
-    confidence_score Float32,           -- Confidence in feature calculations
-
     -- Temporal metadata
     first_activity_timestamp UInt64,    -- First transaction in window
     last_activity_timestamp UInt64,     -- Last transaction in window
@@ -136,4 +130,3 @@ ALTER TABLE analyzers_features ADD INDEX IF NOT EXISTS idx_window_days window_da
 ALTER TABLE analyzers_features ADD INDEX IF NOT EXISTS idx_address address TYPE bloom_filter(0.01) GRANULARITY 4;
 ALTER TABLE analyzers_features ADD INDEX IF NOT EXISTS idx_total_volume_usd total_volume_usd TYPE minmax GRANULARITY 4;
 ALTER TABLE analyzers_features ADD INDEX IF NOT EXISTS idx_degree_total degree_total TYPE minmax GRANULARITY 4;
-ALTER TABLE analyzers_features ADD INDEX IF NOT EXISTS idx_quality_score quality_score TYPE minmax GRANULARITY 4;

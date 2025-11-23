@@ -19,8 +19,6 @@ class LayeringDetector(BasePatternDetector):
         """Validate that path_analysis configuration is present."""
         if "path_analysis" not in self.config:
             raise ValueError("Missing 'path_analysis' section in configuration")
-        if "severity_adjustments" not in self.config:
-            raise ValueError("Missing 'severity_adjustments' section in configuration")
 
     def detect(self, G: nx.DiGraph) -> List[Dict]:
         """
@@ -38,8 +36,6 @@ class LayeringDetector(BasePatternDetector):
         min_path_length = path_config["min_path_length"]
         max_path_length = path_config["max_path_length"]
         max_paths_to_check = path_config["max_paths_to_check"]
-        confidence_score = path_config["confidence_score"]
-        risk_score_multiplier = path_config["risk_score_multiplier"]
         high_volume_percentile = path_config["high_volume_percentile"]
         max_source_nodes = path_config["max_source_nodes"]
         max_target_nodes = path_config["max_target_nodes"]
@@ -87,18 +83,12 @@ class LayeringDetector(BasePatternDetector):
                             if pattern_id in patterns_by_id:
                                 continue
                             
-                            base_severity = self._calculate_layering_severity(G, path, path_volume)
-                            severity_score = self._adjust_severity_for_trust(base_severity, path)
-                            
                             patterns_by_id[pattern_id] = {
                                 'pattern_id': pattern_id,
                                 'pattern_type': PatternTypes.LAYERING_PATH,
                                 'pattern_hash': pattern_hash,
                                 'addresses_involved': sorted_path,
                                 'address_roles': ['source'] + ['intermediary'] * (len(path) - 2) + ['destination'],
-                                'severity_score': severity_score,
-                                'confidence_score': confidence_score,
-                                'risk_score': severity_score * risk_score_multiplier,
                                 'layering_path': path,
                                 'path_depth': len(path),
                                 'path_volume_usd': path_volume,
@@ -107,8 +97,7 @@ class LayeringDetector(BasePatternDetector):
                                 'detection_timestamp': int(time.time()),
                                 'evidence_transaction_count': len(path) - 1,
                                 'evidence_volume_usd': path_volume,
-                                'detection_method': DetectionMethods.PATH_ANALYSIS,
-                                'anomaly_score': severity_score
+                                'detection_method': DetectionMethods.PATH_ANALYSIS
                             }
                                 
                 except nx.NetworkXNoPath:
@@ -187,25 +176,3 @@ class LayeringDetector(BasePatternDetector):
         
         # Layering typically has low variation in volumes
         return cv < cv_threshold
-
-    def _calculate_layering_severity(self, G: nx.DiGraph, path: List[str], volume: float) -> float:
-        """
-        Calculate severity score for layering pattern.
-        
-        Args:
-            G: Graph containing the path
-            path: List of addresses forming the path
-            volume: Total volume in the path
-            
-        Returns:
-            Severity score between 0 and 1
-        """
-        path_config = self.config["path_analysis"]
-        
-        length_factor = min((len(path) - 2) / 6.0, 1.0)  # More hops = more suspicious
-        volume_factor = min(volume / path_config["layering_volume_threshold"], 1.0)
-        
-        length_weight = path_config["layering_length_weight"]
-        volume_weight = path_config["layering_volume_weight"]
-        
-        return (length_factor * length_weight + volume_factor * volume_weight)

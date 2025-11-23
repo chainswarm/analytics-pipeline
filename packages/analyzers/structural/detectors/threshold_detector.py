@@ -20,8 +20,6 @@ class ThresholdDetector(BasePatternDetector):
         """Validate that threshold_detection configuration is present."""
         if "threshold_detection" not in self.config:
             raise ValueError("Missing 'threshold_detection' section in configuration")
-        if "severity_adjustments" not in self.config:
-            raise ValueError("Missing 'severity_adjustments' section in configuration")
 
     def detect(self, G: nx.DiGraph) -> List[Dict]:
         """

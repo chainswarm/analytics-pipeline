@@ -71,8 +71,8 @@ def _fetch_config_from_url(local_path: Path) -> Dict[str, Any]:
 
 def _validate_config(config: Dict[str, Any]) -> None:
     """Validate configuration structure."""
-    required_keys = ["cycle_detection", "path_analysis", "proximity_analysis", 
-                     "network_analysis", "motif_detection", "severity_adjustments"]
+    required_keys = ["cycle_detection", "path_analysis", "proximity_analysis",
+                     "network_analysis", "motif_detection"]
 
     for key in required_keys:
         if key not in config:
@@ -80,21 +80,21 @@ def _validate_config(config: Dict[str, Any]) -> None:
 
     # Validate cycle detection parameters
     cycle_config = config.get("cycle_detection", {})
-    required_cycle_keys = ["max_cycle_length", "max_cycles_per_scc", "confidence_score"]
+    required_cycle_keys = ["max_cycle_length", "max_cycles_per_scc"]
     for key in required_cycle_keys:
         if key not in cycle_config:
             raise ValueError(f"Missing required cycle detection parameter: {key}")
 
     # Validate path analysis parameters
     path_config = config.get("path_analysis", {})
-    required_path_keys = ["min_path_length", "max_path_length", "max_paths_to_check", "confidence_score"]
+    required_path_keys = ["min_path_length", "max_path_length", "max_paths_to_check"]
     for key in required_path_keys:
         if key not in path_config:
             raise ValueError(f"Missing required path analysis parameter: {key}")
 
     # Validate proximity analysis parameters
     proximity_config = config.get("proximity_analysis", {})
-    required_proximity_keys = ["max_distance", "confidence_score"]
+    required_proximity_keys = ["max_distance"]
     for key in required_proximity_keys:
         if key not in proximity_config:
             raise ValueError(f"Missing required proximity analysis parameter: {key}")

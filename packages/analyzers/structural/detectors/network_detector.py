@@ -21,8 +21,6 @@ class NetworkDetector(BasePatternDetector):
             raise ValueError("Missing 'network_analysis' section in configuration")
         if "scc_analysis" not in self.config:
             raise ValueError("Missing 'scc_analysis' section in configuration")
-        if "severity_adjustments" not in self.config:
-            raise ValueError("Missing 'severity_adjustments' section in configuration")
 
     def detect(self, G: nx.DiGraph) -> List[Dict]:
         """

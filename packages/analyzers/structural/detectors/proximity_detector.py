@@ -20,8 +20,6 @@ class ProximityDetector(BasePatternDetector):
             raise ValueError("Missing 'proximity_analysis' section in configuration")
         if "risk_identification" not in self.config:
             raise ValueError("Missing 'risk_identification' section in configuration")
-        if "severity_adjustments" not in self.config:
-            raise ValueError("Missing 'severity_adjustments' section in configuration")
 
     def detect(self, G: nx.DiGraph) -> List[Dict]:
         """

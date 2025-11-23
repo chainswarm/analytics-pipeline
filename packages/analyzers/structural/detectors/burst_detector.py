@@ -21,8 +21,6 @@ class BurstDetector(BasePatternDetector):
         """Validate that burst_detection configuration is present."""
         if "burst_detection" not in self.config:
             raise ValueError("Missing 'burst_detection' section in configuration")
-        if "severity_adjustments" not in self.config:
-            raise ValueError("Missing 'severity_adjustments' section in configuration")
 
     def detect(self, G: nx.DiGraph) -> List[Dict]:
         """
