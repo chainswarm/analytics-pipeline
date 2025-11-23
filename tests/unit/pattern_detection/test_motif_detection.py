@@ -1,5 +1,5 @@
 """
-Integration tests for motif (fan-in/fan-out) detection.
+Unit tests for motif (fan-in/fan-out) detection.
 
 Tests the motif detection algorithm from StructuralPatternAnalyzer
 against real-world data to verify:
@@ -491,58 +491,3 @@ class TestMotifDetection:
             print(f"   ✓ Fan-out center correctly identified")
         
         print(f"✅ TEST PASSED: Center identification")
-    
-    def test_motif_stored_in_correct_table(self, test_clickhouse_client, test_data_context, setup_test_schema, clean_pattern_tables):
-        """Test that motif patterns are stored in analyzers_patterns_motif table."""
-        print(f"\n{'#'*80}")
-        print(f"# TEST: Motif Storage in Database")
-        print(f"{'#'*80}")
-        
-        from packages.storage.repositories.structural_pattern_repository import StructuralPatternRepository
-        from packages.storage.constants import PatternTypes
-        
-        repo = StructuralPatternRepository(test_clickhouse_client)
-        
-        # Create fake fan-in pattern
-        patterns = [{
-            'pattern_id': 'motif_fanin_test_001',
-            'pattern_type': PatternTypes.MOTIF_FANIN,
-            'pattern_hash': 'hash_fanin_test_001',
-            'addresses_involved': ['CENTER', 'S1', 'S2', 'S3'],
-            'address_roles': ['center', 'source', 'source', 'source'],
-            'motif_type': 'fanin',
-            'motif_center_address': 'CENTER',
-            'motif_participant_count': 6,
-            'detection_timestamp': int(time.time()),
-            'pattern_start_time': 0,
-            'pattern_end_time': 0,
-            'pattern_duration_hours': 0,
-            'evidence_transaction_count': 3,
-            'evidence_volume_usd': 30000,
-            'detection_method': 'motif_detection'
-        }]
-        
-        print(f"💾 Inserting pattern into database...")
-        repo.insert_deduplicated_patterns(
-            patterns,
-            window_days=test_data_context['window_days'],
-            processing_date=test_data_context['processing_date']
-        )
-        
-        print(f"🔍 Querying database for pattern...")
-        result = test_clickhouse_client.query(
-            "SELECT * FROM analyzers_patterns_motif WHERE pattern_id = 'motif_fanin_test_001'"
-        )
-        
-        print(f"📊 Query returned {len(result.result_rows)} row(s)")
-        
-        assert len(result.result_rows) == 1, "Pattern should be in motif table"
-        
-        # Verify columns exist
-        print(f"📋 Available columns: {', '.join(result.column_names)}")
-        
-        assert 'motif_type' in result.column_names
-        assert 'motif_center_address' in result.column_names
-        assert 'motif_participant_count' in result.column_names
-        
-        print(f"✅ TEST PASSED: Pattern stored correctly in database")

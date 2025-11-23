@@ -1,5 +1,5 @@
 """
-Integration tests for layering path detection.
+Unit tests for layering path detection.
 
 Tests the layering detection algorithm from StructuralPatternAnalyzer
 against real-world data to verify:
@@ -423,62 +423,3 @@ class TestLayeringDetection:
             print(f"   ✓ Pattern hashes match")
         
         print(f"✅ TEST PASSED: Deduplication working")
-    
-    def test_layering_stored_in_correct_table(self, test_clickhouse_client, test_data_context, setup_test_schema, clean_pattern_tables):
-        """Test that layering patterns are stored in analyzers_patterns_layering table."""
-        print(f"\n{'#'*80}")
-        print(f"# TEST: Layering Storage in Database")
-        print(f"{'#'*80}")
-        
-        from packages.storage.repositories.structural_pattern_repository import StructuralPatternRepository
-        from packages.storage.constants import PatternTypes
-        
-        repo = StructuralPatternRepository(test_clickhouse_client)
-        
-        # Create fake layering pattern
-        patterns = [{
-            'pattern_id': 'layering_test_001',
-            'pattern_type': PatternTypes.LAYERING_PATH,
-            'pattern_hash': 'hash_layering_test_001',
-            'addresses_involved': ['A', 'B', 'C', 'D'],
-            'address_roles': ['source', 'intermediary', 'intermediary', 'destination'],
-            'layering_path': ['A', 'B', 'C', 'D'],
-            'path_depth': 4,
-            'path_volume_usd': 40000,
-            'source_address': 'A',
-            'destination_address': 'D',
-            'detection_timestamp': int(time.time()),
-            'pattern_start_time': 0,
-            'pattern_end_time': 0,
-            'pattern_duration_hours': 0,
-            'evidence_transaction_count': 3,
-            'evidence_volume_usd': 40000,
-            'detection_method': 'path_analysis'
-        }]
-        
-        print(f"💾 Inserting pattern into database...")
-        repo.insert_deduplicated_patterns(
-            patterns,
-            window_days=test_data_context['window_days'],
-            processing_date=test_data_context['processing_date']
-        )
-        
-        print(f"🔍 Querying database for pattern...")
-        result = test_clickhouse_client.query(
-            "SELECT * FROM analyzers_patterns_layering WHERE pattern_id = 'layering_test_001'"
-        )
-        
-        print(f"📊 Query returned {len(result.result_rows)} row(s)")
-        
-        assert len(result.result_rows) == 1, "Pattern should be in layering table"
-        
-        # Verify columns exist
-        print(f"📋 Available columns: {', '.join(result.column_names)}")
-        
-        assert 'layering_path' in result.column_names
-        assert 'path_depth' in result.column_names
-        assert 'path_volume_usd' in result.column_names
-        assert 'source_address' in result.column_names
-        assert 'destination_address' in result.column_names
-        
-        print(f"✅ TEST PASSED: Pattern stored correctly in database")

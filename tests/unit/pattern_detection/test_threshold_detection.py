@@ -1,5 +1,5 @@
 """
-Integration tests for threshold evasion pattern detection.
+Unit tests for threshold evasion pattern detection.
 
 Tests the threshold evasion detection algorithm from StructuralPatternAnalyzer
 against real-world data to verify:
@@ -463,69 +463,3 @@ class TestThresholdDetection:
             print(f"   ✓ Pattern hashes match")
         
         print(f"✅ TEST PASSED: Deduplication working")
-    
-    def test_threshold_stored_in_correct_table(self, test_clickhouse_client, test_data_context, setup_test_schema, clean_pattern_tables):
-        """Test that threshold patterns are stored in analyzers_patterns_threshold table."""
-        print(f"\n{'#'*80}")
-        print(f"# TEST: Threshold Storage in Database")
-        print(f"{'#'*80}")
-        
-        from packages.storage.repositories.structural_pattern_repository import StructuralPatternRepository
-        from packages.storage.constants import PatternTypes
-        
-        repo = StructuralPatternRepository(test_clickhouse_client)
-        
-        # Create fake threshold evasion pattern
-        patterns = [{
-            'pattern_id': 'threshold_test_001',
-            'pattern_type': PatternTypes.THRESHOLD_EVASION,
-            'pattern_hash': 'hash_threshold_test_001',
-            'addresses_involved': ['EVADER'],
-            'address_roles': ['primary_address'],
-            'primary_address': 'EVADER',
-            'threshold_value': 10000,
-            'threshold_type': 'reporting',
-            'transactions_near_threshold': 10,
-            'avg_transaction_size': 9500,
-            'max_transaction_size': 9900,
-            'size_consistency': 0.95,
-            'clustering_score': 0.85,
-            'unique_days': 1,
-            'avg_daily_transactions': 10,
-            'temporal_spread_score': 0.5,
-            'threshold_avoidance_score': 0.85,
-            'detection_timestamp': int(time.time()),
-            'pattern_start_time': 0,
-            'pattern_end_time': 0,
-            'pattern_duration_hours': 0,
-            'evidence_transaction_count': 10,
-            'evidence_volume_usd': 95000,
-            'detection_method': 'temporal_analysis'
-        }]
-        
-        print(f"💾 Inserting pattern into database...")
-        repo.insert_deduplicated_patterns(
-            patterns,
-            window_days=test_data_context['window_days'],
-            processing_date=test_data_context['processing_date']
-        )
-        
-        print(f"🔍 Querying database for pattern...")
-        result = test_clickhouse_client.query(
-            "SELECT * FROM analyzers_patterns_threshold WHERE pattern_id = 'threshold_test_001'"
-        )
-        
-        print(f"📊 Query returned {len(result.result_rows)} row(s)")
-        
-        assert len(result.result_rows) == 1, "Pattern should be in threshold table"
-        
-        # Verify columns exist
-        print(f"📋 Available columns: {', '.join(result.column_names)}")
-        
-        assert 'threshold_value' in result.column_names
-        assert 'threshold_type' in result.column_names
-        assert 'transactions_near_threshold' in result.column_names
-        assert 'clustering_score' in result.column_names
-        assert 'size_consistency' in result.column_names
-        
-        print(f"✅ TEST PASSED: Pattern stored correctly in database")

@@ -1,0 +1,13 @@
+# Database storage tests to remove from unit tests
+# These tests require ClickHouse and belong in tests/integration/
+
+Files to update:
+- test_cycle_detection.py: Remove test_cycle_stored_in_correct_table (lines 424-483)
+- test_motif_detection.py: Remove test_motif_stored_in_correct_table (lines 495-548)
+- test_layering_detection.py: Remove test_layering_stored_in_correct_table (lines 427-484)
+- test_threshold_detection.py: Remove test_threshold_stored_in_correct_table (lines 467-531)
+- test_proximity_detection.py: Remove test_proximity_stored_in_correct_table (lines 516-569)
+- test_network_detection.py: Remove test_network_stored_in_correct_table (lines 614-669)
+- test_burst_detection.py: Remove test_burst_stored_in_correct_table (lines 346-411)
+
+These have been moved to: tests/integration/pattern_detection/test_database_storage.py

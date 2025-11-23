@@ -1,5 +1,5 @@
 """
-Integration tests for temporal burst pattern detection.
+Unit tests for temporal burst pattern detection.
 
 Tests the burst detection algorithm from StructuralPatternAnalyzer
 against real-world data to verify:
@@ -342,73 +342,6 @@ class TestBurstDetection:
         print(f"   ✓ Consistent results: {len(patterns1)} patterns")
         
         print(f"\n✅ TEST PASSED: Deduplication interface verified")
-    
-    def test_burst_stored_in_correct_table(self, test_clickhouse_client, test_data_context, setup_test_schema, clean_pattern_tables):
-        """Test that burst patterns are stored in analyzers_patterns_burst table."""
-        print(f"\n{'#'*80}")
-        print(f"# TEST: Burst Storage in Database")
-        print(f"{'#'*80}")
-        
-        from packages.storage.repositories.structural_pattern_repository import StructuralPatternRepository
-        from packages.storage.constants import PatternTypes
-        
-        repo = StructuralPatternRepository(test_clickhouse_client)
-        
-        # Create fake burst pattern (demonstrates expected schema)
-        patterns = [{
-            'pattern_id': 'burst_test_001',
-            'pattern_type': PatternTypes.TEMPORAL_BURST,
-            'pattern_hash': 'hash_burst_test_001',
-            'addresses_involved': ['BURSTER'],
-            'address_roles': ['burst_source'],
-            'burst_address': 'BURSTER',
-            'burst_start_timestamp': int(time.time()) - 7200,  # 2 hours ago
-            'burst_end_timestamp': int(time.time()) - 3600,     # 1 hour ago
-            'burst_duration_seconds': 3600,  # 1 hour
-            'burst_transaction_count': 100,
-            'burst_volume_usd': 500000,
-            'normal_tx_rate': 10.0,
-            'burst_tx_rate': 100.0,
-            'burst_intensity': 10.0,
-            'z_score': 5.5,
-            'hourly_distribution': [],
-            'peak_hours': [10, 11],
-            'detection_timestamp': int(time.time()),
-            'pattern_start_time': 0,
-            'pattern_end_time': 0,
-            'pattern_duration_hours': 0,
-            'evidence_transaction_count': 100,
-            'evidence_volume_usd': 500000,
-            'detection_method': 'temporal_analysis'
-        }]
-        
-        print(f"💾 Inserting pattern into database...")
-        repo.insert_deduplicated_patterns(
-            patterns,
-            window_days=test_data_context['window_days'],
-            processing_date=test_data_context['processing_date']
-        )
-        
-        print(f"🔍 Querying database for pattern...")
-        result = test_clickhouse_client.query(
-            "SELECT * FROM analyzers_patterns_burst WHERE pattern_id = 'burst_test_001'"
-        )
-        
-        print(f"📊 Query returned {len(result.result_rows)} row(s)")
-        
-        assert len(result.result_rows) == 1, "Pattern should be in burst table"
-        
-        # Verify columns exist
-        print(f"📋 Available columns: {', '.join(result.column_names)}")
-        
-        assert 'burst_address' in result.column_names
-        assert 'burst_start_timestamp' in result.column_names
-        assert 'burst_end_timestamp' in result.column_names
-        assert 'burst_duration_seconds' in result.column_names
-        assert 'burst_intensity' in result.column_names
-        assert 'z_score' in result.column_names
-        
-        print(f"✅ TEST PASSED: Pattern stored correctly in database")
     
     def test_burst_properties_structure(self, analyzer):
         """

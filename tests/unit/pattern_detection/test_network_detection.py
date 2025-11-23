@@ -1,5 +1,5 @@
 """
-Integration tests for smurfing network detection.
+Unit tests for smurfing network detection.
 
 Tests the network/SCC detection algorithm from StructuralPatternAnalyzer
 against real-world data to verify:
@@ -610,60 +610,3 @@ class TestNetworkDetection:
             print(f"   ✓ Pattern hashes match")
         
         print(f"✅ TEST PASSED: Deduplication working")
-    
-    def test_network_stored_in_correct_table(self, test_clickhouse_client, test_data_context, setup_test_schema, clean_pattern_tables):
-        """Test that network patterns are stored in analyzers_patterns_network table."""
-        print(f"\n{'#'*80}")
-        print(f"# TEST: Network Storage in Database")
-        print(f"{'#'*80}")
-        
-        from packages.storage.repositories.structural_pattern_repository import StructuralPatternRepository
-        from packages.storage.constants import PatternTypes
-        
-        repo = StructuralPatternRepository(test_clickhouse_client)
-        
-        # Create fake network pattern
-        patterns = [{
-            'pattern_id': 'network_test_001',
-            'pattern_type': PatternTypes.SMURFING_NETWORK,
-            'pattern_hash': 'hash_network_test_001',
-            'addresses_involved': ['A', 'B', 'C', 'D', 'E'],
-            'address_roles': ['hub', 'participant', 'participant', 'participant', 'participant'],
-            'network_members': ['A', 'B', 'C', 'D', 'E'],
-            'network_size': 5,
-            'network_density': 0.65,
-            'hub_addresses': ['A'],
-            'detection_timestamp': int(time.time()),
-            'pattern_start_time': 0,
-            'pattern_end_time': 0,
-            'pattern_duration_hours': 0,
-            'evidence_transaction_count': 8,
-            'evidence_volume_usd': 80000,
-            'detection_method': 'network_analysis'
-        }]
-        
-        print(f"💾 Inserting pattern into database...")
-        repo.insert_deduplicated_patterns(
-            patterns,
-            window_days=test_data_context['window_days'],
-            processing_date=test_data_context['processing_date']
-        )
-        
-        print(f"🔍 Querying database for pattern...")
-        result = test_clickhouse_client.query(
-            "SELECT * FROM analyzers_patterns_network WHERE pattern_id = 'network_test_001'"
-        )
-        
-        print(f"📊 Query returned {len(result.result_rows)} row(s)")
-        
-        assert len(result.result_rows) == 1, "Pattern should be in network table"
-        
-        # Verify columns exist
-        print(f"📋 Available columns: {', '.join(result.column_names)}")
-        
-        assert 'network_members' in result.column_names
-        assert 'network_size' in result.column_names
-        assert 'network_density' in result.column_names
-        assert 'hub_addresses' in result.column_names
-        
-        print(f"✅ TEST PASSED: Pattern stored correctly in database")

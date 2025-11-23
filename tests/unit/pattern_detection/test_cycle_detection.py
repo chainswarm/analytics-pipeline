@@ -1,12 +1,11 @@
 """
-Integration tests for cycle pattern detection.
+Unit tests for cycle pattern detection.
 
 Tests the cycle detection algorithm from StructuralPatternAnalyzer
-against real-world data to verify:
+using mocks and synthetic data to verify:
 - Cycles are correctly identified
 - Pattern properties are accurate (length, volume)
 - Deduplication works correctly
-- Data is stored in analyzers_patterns_cycle table
 
 Enhanced with:
 - Dynamic cycle generation for sizes: 3, 4, 16, 32, 64
@@ -14,6 +13,8 @@ Enhanced with:
 - Parametrized tests
 - Dynamic assertions
 - Debug console output
+
+Note: Database storage tests are in tests/integration/pattern_detection/test_database_storage.py
 """
 
 import pytest
@@ -420,67 +421,6 @@ class TestCycleDetection:
             print(f"   ✓ Pattern hash: {patterns1[0]['pattern_hash'][:50]}...")
         
         print(f"✅ TEST PASSED: Deduplication working correctly")
-    
-    def test_cycle_stored_in_correct_table(self, test_clickhouse_client, test_data_context, setup_test_schema, clean_pattern_tables):
-        """Test that cycles are stored in analyzers_patterns_cycle table."""
-        print(f"\n{'#'*80}")
-        print(f"# TEST: Cycle Storage in Database")
-        print(f"{'#'*80}")
-        
-        from packages.storage.repositories.structural_pattern_repository import StructuralPatternRepository
-        from packages.storage.constants import PatternTypes
-        from datetime import datetime
-        
-        # Create repository
-        repo = StructuralPatternRepository(test_clickhouse_client)
-        
-        # Create fake cycle pattern
-        patterns = [{
-            'pattern_id': 'cycle_test_001',
-            'pattern_type': PatternTypes.CYCLE,
-            'pattern_hash': 'hash_test_001',
-            'addresses_involved': ['A', 'B', 'C'],
-            'address_roles': ['participant', 'participant', 'participant'],
-            'cycle_path': ['A', 'B', 'C'],
-            'cycle_length': 3,
-            'cycle_volume_usd': 33000,
-            'detection_timestamp': int(time.time()),
-            'pattern_start_time': 0,
-            'pattern_end_time': 0,
-            'pattern_duration_hours': 0,
-            'evidence_transaction_count': 3,
-            'evidence_volume_usd': 33000,
-            'detection_method': 'cycle_detection'
-        }]
-        
-        print(f"💾 Inserting pattern into database...")
-        # Insert patterns
-        repo.insert_deduplicated_patterns(
-            patterns,
-            window_days=test_data_context['window_days'],
-            processing_date=test_data_context['processing_date']
-        )
-        
-        print(f"🔍 Querying database for pattern...")
-        # Verify in specialized table
-        result = test_clickhouse_client.query(
-            "SELECT * FROM analyzers_patterns_cycle WHERE pattern_id = 'cycle_test_001'"
-        )
-        
-        print(f"📊 Query returned {len(result.result_rows)} row(s)")
-        
-        assert len(result.result_rows) == 1, "Pattern should be in cycle table"
-        
-        # Verify columns exist
-        row = result.result_rows[0]
-        print(f"📋 Available columns: {', '.join(result.column_names)}")
-        
-        assert result.column_names[0] == 'window_days'
-        assert 'cycle_path' in result.column_names
-        assert 'cycle_length' in result.column_names
-        assert 'cycle_volume_usd' in result.column_names
-        
-        print(f"✅ TEST PASSED: Pattern stored correctly in database")
     
     def test_cycle_properties_accurate(self, analyzer):
         """Test that cycle properties (length, volume) are calculated correctly."""

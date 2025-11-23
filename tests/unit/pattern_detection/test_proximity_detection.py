@@ -1,5 +1,5 @@
 """
-Integration tests for proximity risk detection.
+Unit tests for proximity risk detection.
 
 Tests the proximity analysis algorithm from StructuralPatternAnalyzer
 against real-world data to verify:
@@ -512,58 +512,3 @@ class TestProximityDetection:
             print(f"   ✓ Deduplication working")
         
         print(f"✅ TEST PASSED: Deduplication")
-    
-    def test_proximity_stored_in_correct_table(self, test_clickhouse_client, test_data_context, setup_test_schema, clean_pattern_tables):
-        """Test that proximity patterns are stored in analyzers_patterns_proximity table."""
-        print(f"\n{'#'*80}")
-        print(f"# TEST: Proximity Storage in Database")
-        print(f"{'#'*80}")
-        
-        from packages.storage.repositories.structural_pattern_repository import StructuralPatternRepository
-        from packages.storage.constants import PatternTypes
-        
-        repo = StructuralPatternRepository(test_clickhouse_client)
-        
-        # Create fake proximity pattern
-        patterns = [{
-            'pattern_id': 'proximity_test_001',
-            'pattern_type': PatternTypes.PROXIMITY_RISK,
-            'pattern_hash': 'hash_proximity_test_001',
-            'addresses_involved': ['RISK', 'SUSPECT'],
-            'address_roles': ['risk_source', 'suspect'],
-            'risk_source_address': 'RISK',
-            'distance_to_risk': 2,
-            'risk_propagation_score': 0.333,
-            'detection_timestamp': int(time.time()),
-            'pattern_start_time': 0,
-            'pattern_end_time': 0,
-            'pattern_duration_hours': 0,
-            'evidence_transaction_count': 5,
-            'evidence_volume_usd': 50000,
-            'detection_method': 'proximity_analysis'
-        }]
-        
-        print(f"💾 Inserting pattern into database...")
-        repo.insert_deduplicated_patterns(
-            patterns,
-            window_days=test_data_context['window_days'],
-            processing_date=test_data_context['processing_date']
-        )
-        
-        print(f"🔍 Querying database for pattern...")
-        result = test_clickhouse_client.query(
-            "SELECT * FROM analyzers_patterns_proximity WHERE pattern_id = 'proximity_test_001'"
-        )
-        
-        print(f"📊 Query returned {len(result.result_rows)} row(s)")
-        
-        assert len(result.result_rows) == 1, "Pattern should be in proximity table"
-        
-        # Verify columns exist
-        print(f"📋 Available columns: {', '.join(result.column_names)}")
-        
-        assert 'risk_source_address' in result.column_names
-        assert 'distance_to_risk' in result.column_names
-        # Note: risk_propagation_score is calculated in detection but not stored in DB
-        
-        print(f"✅ TEST PASSED: Pattern stored correctly in database")
