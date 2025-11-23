@@ -52,3 +52,45 @@ class ComputationAuditRepository(BaseRepository):
         }
         
         self.client.command(query, parameters=parameters)
+    
+    def get_audit_logs(
+        self,
+        limit: int = 100,
+        offset: int = 0
+    ) -> list[dict]:
+        """
+        Get computation audit logs ordered by processing_date DESC, window_days DESC.
+        
+        Args:
+            limit: Maximum number of rows to return
+            offset: Number of rows to skip for pagination
+            
+        Returns:
+            List of audit log dictionaries
+        """
+        query = f"""
+            SELECT
+                window_days,
+                processing_date,
+                created_at,
+                end_at,
+                duration_seconds
+            FROM {self.table_name} FINAL
+            ORDER BY processing_date DESC, window_days DESC
+            LIMIT {limit}
+            OFFSET {offset}
+        """
+        
+        result = self.client.query(query)
+        return list(result.named_results())
+    
+    def get_audit_logs_count(self) -> int:
+        """
+        Get total count of audit logs.
+        
+        Returns:
+            Total number of audit log entries
+        """
+        query = f"SELECT COUNT(*) as count FROM {self.table_name} FINAL"
+        result = self.client.query(query)
+        return result.first_row[0] if result.row_count > 0 else 0

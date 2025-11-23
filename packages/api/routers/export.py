@@ -8,6 +8,7 @@ from loguru import logger
 from packages.storage.repositories import get_connection_params, ClientFactory
 from packages.storage.repositories.feature_repository import FeatureRepository
 from packages.storage.repositories.structural_pattern_repository import StructuralPatternRepository
+from packages.storage.repositories.computation_audit_repository import ComputationAuditRepository
 from packages.api.models import PaginatedResponse
 
 router = APIRouter(tags=["export"])
@@ -159,4 +160,65 @@ async def export_patterns(
                 
     except Exception as e:
         logger.error(f"Failed to export patterns: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/audit/computation-logs", response_model=PaginatedResponse)
+async def get_computation_audit_logs(
+    network: str = Query(..., description="Network name"),
+    limit: int = Query(100, description="Row limit"),
+    offset: int = Query(0, description="Offset for pagination")
+):
+    """
+    Get computation audit logs showing successful analyzer processing runs.
+    
+    Returns logs ordered by processing_date DESC, window_days DESC.
+    Useful for tracking pipeline execution history and performance metrics.
+    
+    **Response includes**:
+    - window_days: Analysis window size
+    - processing_date: Date when analysis was run
+    - created_at: Pipeline start time
+    - end_at: Pipeline end time
+    - duration_seconds: Total execution time
+    
+    **Example Response**:
+    ```json
+    {
+      "rows": [
+        {
+          "window_days": 180,
+          "processing_date": "2024-01-15",
+          "created_at": "2024-01-15T10:00:00.000",
+          "end_at": "2024-01-15T10:45:30.000",
+          "duration_seconds": 2730
+        }
+      ],
+      "row_count": 1,
+      "offset": 0,
+      "limit": 100,
+      "has_more": false
+    }
+    ```
+    """
+    try:
+        params = get_connection_params(network)
+        client_factory = ClientFactory(params)
+        
+        with client_factory.client_context() as client:
+            repository = ComputationAuditRepository(client)
+            
+            logs = repository.get_audit_logs(limit=limit, offset=offset)
+            total_count = repository.get_audit_logs_count()
+            
+            return PaginatedResponse(
+                rows=logs,
+                row_count=len(logs),
+                offset=offset,
+                limit=limit,
+                has_more=(offset + len(logs) < total_count)
+            )
+                
+    except Exception as e:
+        logger.error(f"Failed to fetch computation audit logs: {e}")
         raise HTTPException(status_code=500, detail=str(e))
