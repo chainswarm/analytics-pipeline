@@ -224,7 +224,7 @@ class TestCycleDetection:
         
         return analyzer
     
-    @pytest.mark.parametrize("cycle_size", [3, 4, 16, 32, 64])
+    @pytest.mark.parametrize("cycle_size", [3,4, 16,32, 64])
     def test_dynamic_cycle_detection_with_noise(self, analyzer, cycle_size):
         """
         Test cycle detection with dynamically generated cycles of various sizes.
@@ -291,8 +291,20 @@ class TestCycleDetection:
         assert len(patterns) >= 1, f"Expected at least 1 cycle, found {len(patterns)}"
         print(f"   ✓ Found at least one cycle pattern")
         
-        # Find the largest cycle (should be our main cycle)
-        main_pattern = max(patterns, key=lambda p: p.get('cycle_length', 0))
+        # Find the cycle that contains our expected ADDR_* nodes (not just the largest)
+        # This prevents selecting spurious noise cycles that might be larger
+        expected_addresses = set(metadata['cycle_nodes'])
+        main_pattern = None
+        for pattern in patterns:
+            detected_addresses = set(pattern.get('addresses_involved', []))
+            if detected_addresses == expected_addresses:
+                main_pattern = pattern
+                break
+        
+        assert main_pattern is not None, \
+            f"Could not find pattern matching expected cycle nodes. " \
+            f"Expected addresses: {expected_addresses}, " \
+            f"Detected patterns: {[(p.get('cycle_length'), set(p.get('addresses_involved', []))) for p in patterns]}"
         
         # Verify pattern type
         assert main_pattern['pattern_type'] == 'cycle', \
