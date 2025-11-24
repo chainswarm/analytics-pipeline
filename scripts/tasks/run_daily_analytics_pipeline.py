@@ -28,9 +28,9 @@ def main():
 
     try:
         # Validate date
-        datetime.strptime(args.window_date, "%Y-%m-%d")
+        datetime.strptime(args.processing_date, "%Y-%m-%d")
         
-        logger.info(f"Starting manual Daily Analytics Pipeline for {args.network} on {args.date}")
+        logger.info(f"Starting manual Daily Analytics Pipeline for {args.network} on {args.processing_date}")
         
         context = BaseTaskContext(
             network=args.network,
