@@ -28,7 +28,7 @@ def main():
 
     try:
         # Validate date
-        datetime.strptime(args.date, "%Y-%m-%d")
+        datetime.strptime(args.window_date, "%Y-%m-%d")
         
         logger.info(f"Starting manual Daily Analytics Pipeline for {args.network} on {args.date}")
         
