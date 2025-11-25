@@ -1,5 +1,5 @@
 from typing import Dict, List
-from datetime import datetime
+from datetime import datetime, timezone
 import networkx as nx
 import numpy as np
 from loguru import logger
@@ -94,7 +94,7 @@ class StructuralPatternAnalyzer:
 
         logger.info(f"Graph built: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
 
-        processing_date = datetime.fromtimestamp(self.end_timestamp / 1000).strftime('%Y-%m-%d')
+        processing_date = datetime.fromtimestamp(self.end_timestamp / 1000, tz=timezone.utc).strftime('%Y-%m-%d')
 
         deduplicated_patterns = []
 

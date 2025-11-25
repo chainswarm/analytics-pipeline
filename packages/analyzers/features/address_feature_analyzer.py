@@ -191,8 +191,8 @@ class AddressFeatureAnalyzer:
             total_inserted = 0
             logger.info(f"Inserting {len(all_features_list)} feature sets into {self.feature_repository.features_table_name}")
             
-            from datetime import datetime
-            processing_date = datetime.fromtimestamp(self.end_timestamp / 1000).strftime('%Y-%m-%d')
+            from datetime import datetime, timezone
+            processing_date = datetime.fromtimestamp(self.end_timestamp / 1000, tz=timezone.utc).strftime('%Y-%m-%d')
             
             for j in range(0, len(all_features_list), batch_size):
                 self.feature_repository.insert_features(
