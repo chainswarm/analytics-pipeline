@@ -2,9 +2,9 @@ from datetime import datetime
 from loguru import logger
 from celery_singleton import Singleton
 
+from chainswarm_core.jobs import BaseTask
 from packages.jobs.celery_app import celery_app
-from packages.jobs.base.base_task import BaseDataPipelineTask
-from packages.jobs.base.task_models import BaseTaskContext
+from packages.jobs.base.task_models import AnalyticsTaskContext
 
 # Import sub-tasks
 from packages.jobs.tasks.ingest_batch_task import IngestBatchTask
@@ -14,7 +14,7 @@ from packages.jobs.tasks.detect_structural_patterns_task import DetectStructural
 from packages.jobs.tasks.log_computation_audit_task import LogComputationAuditTask
 
 
-class DailyAnalyticsPipelineTask(BaseDataPipelineTask, Singleton):
+class DailyAnalyticsPipelineTask(BaseTask, Singleton):
     """
     Orchestrates the full daily analytics pipeline sequence:
     1. Ingest Data (from configured source to ClickHouse)
@@ -24,7 +24,7 @@ class DailyAnalyticsPipelineTask(BaseDataPipelineTask, Singleton):
     5. Audit Log
     """
     
-    def execute_task(self, context: BaseTaskContext):
+    def execute_task(self, context: AnalyticsTaskContext):
         processing_date = context.processing_date
         network = context.network
         
@@ -51,7 +51,7 @@ class DailyAnalyticsPipelineTask(BaseDataPipelineTask, Singleton):
             logger.info("Loging Computation Audit")
             
             # Create audit context with start time
-            audit_context = BaseTaskContext(
+            audit_context = AnalyticsTaskContext(
                 network=network,
                 window_days=context.window_days,
                 processing_date=processing_date
@@ -93,12 +93,11 @@ def daily_analytics_pipeline_task(
     batch_size: int = 1000,
     source_config: dict = None
 ):
-    context = BaseTaskContext(
+    context = AnalyticsTaskContext(
         network=network,
         window_days=window_days,
         processing_date=processing_date,
         batch_size=batch_size
     )
-    # We could extend BaseTaskContext to hold source_config if needed for IngestBatchTask override
     
     return self.run(context)

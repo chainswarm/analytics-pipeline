@@ -4,8 +4,9 @@ import argparse
 from dotenv import load_dotenv
 from loguru import logger
 
+from chainswarm_core.jobs import BaseTaskContext
+from chainswarm_core.observability import setup_logger
 from packages.jobs.tasks.ingest_batch_task import IngestBatchTask
-from packages.jobs.base.task_models import BaseTaskContext
 
 def main():
     parser = argparse.ArgumentParser(description='Manual Batch Ingestion Task')
@@ -17,6 +18,10 @@ def main():
     args = parser.parse_args()
     
     load_dotenv()
+    
+    # Setup logger once for the task
+    service_name = f'ingest-{args.network}-batch'
+    setup_logger(service_name)
     
     if args.source:
         os.environ['INGESTION_SOURCE_TYPE'] = args.source

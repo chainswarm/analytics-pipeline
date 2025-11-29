@@ -13,7 +13,7 @@ import uvicorn
 from dotenv import load_dotenv
 from loguru import logger
 
-from packages import setup_logger
+from chainswarm_core.observability import setup_logger
 
 
 def main():

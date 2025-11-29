@@ -2,9 +2,9 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from loguru import logger
 from celery_singleton import Singleton
+from chainswarm_core.jobs import BaseTask
 from packages.jobs.celery_app import celery_app
-from packages.jobs.base.base_task import BaseDataPipelineTask
-from packages.jobs.base.task_models import BaseTaskContext
+from packages.jobs.base.task_models import AnalyticsTaskContext
 from packages.jobs.tasks.ingest_batch_task import IngestBatchTask
 from packages.jobs.tasks import InitializeAnalyzersTask
 from packages.jobs.tasks.build_features_task import BuildFeaturesTask
@@ -12,9 +12,9 @@ from packages.jobs.tasks.detect_structural_patterns_task import DetectStructural
 from packages.jobs.tasks.log_computation_audit_task import LogComputationAuditTask
 
 
-class BackfillPipelineTask(BaseDataPipelineTask, Singleton):
+class BackfillPipelineTask(BaseTask, Singleton):
     
-    def execute_task(self, context: BaseTaskContext):
+    def execute_task(self, context: AnalyticsTaskContext):
         start_date = datetime.strptime(context.start_date, "%Y-%m-%d")
         end_date = datetime.strptime(context.end_date, "%Y-%m-%d")
         
@@ -34,7 +34,7 @@ class BackfillPipelineTask(BaseDataPipelineTask, Singleton):
             
             logger.info(f"Processing date {processing_date_str} ({processed_days}/{total_days})")
             
-            date_context = BaseTaskContext(
+            date_context = AnalyticsTaskContext(
                 network=context.network,
                 window_days=context.window_days,
                 processing_date=processing_date_str,
@@ -60,7 +60,7 @@ class BackfillPipelineTask(BaseDataPipelineTask, Singleton):
             structural_patterns_task.execute_task(date_context)
             
             logger.info(f"Step 4/6: Log Computation Audit for {processing_date_str}")
-            audit_context = BaseTaskContext(
+            audit_context = AnalyticsTaskContext(
                 network=context.network,
                 window_days=context.window_days,
                 processing_date=processing_date_str
@@ -101,19 +101,15 @@ def backfill_pipeline_task(
     batch_size: int = None,
     providers: list = None
 ):
-    context = BaseTaskContext(
+    context = AnalyticsTaskContext(
         network=network,
         window_days=window_days,
         min_edge_weight=min_edge_weight,
         sampling_percentage=sampling_percentage,
-        model_network=model_network,
-        model_window_days=model_window_days,
-        model_processing_date=model_processing_date,
         batch_size=batch_size,
-        providers=providers
+        start_date=start_date,
+        end_date=end_date,
     )
-    context.start_date = start_date
-    context.end_date = end_date
     
     return self.run(context)
 

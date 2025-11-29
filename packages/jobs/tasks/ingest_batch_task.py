@@ -1,21 +1,15 @@
 import os
 from loguru import logger
 from celery_singleton import Singleton
-from dotenv import load_dotenv
-
+from chainswarm_core.jobs import BaseTask, BaseTaskContext
 from packages.jobs.celery_app import celery_app
-from packages.jobs.base.base_task import BaseDataPipelineTask
-from packages.jobs.base.task_models import BaseTaskContext
 from packages.storage.repositories import get_connection_params, ClientFactory
-from packages import setup_logger
 from packages.ingestion.service import IngestionService
 
-class IngestBatchTask(BaseDataPipelineTask, Singleton):
+
+class IngestBatchTask(BaseTask, Singleton):
 
     def execute_task(self, context: BaseTaskContext):
-        service_name = f'ingest-{context.network}-batch'
-        setup_logger(service_name)
-
         ingestion_source = os.getenv('INGESTION_SOURCE_TYPE', 'DIRECTORY')
         
         logger.info(

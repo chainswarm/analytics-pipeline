@@ -1,3 +1,5 @@
+chainswarm-core>=0.1.8
+
 clickhouse-connect>=0.10.0
 celery
 celery-singleton>=0.3.1

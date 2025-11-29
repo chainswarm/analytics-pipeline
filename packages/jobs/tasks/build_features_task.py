@@ -1,27 +1,19 @@
-from dotenv import load_dotenv
 from loguru import logger
 from celery_singleton import Singleton
-
+from chainswarm_core.jobs import BaseTask, BaseTaskContext
 from packages.analyzers.features.address_feature_analyzer import AddressFeatureAnalyzer
-from packages.jobs.base import BaseTaskContext
 from packages.jobs.celery_app import celery_app
-from packages.jobs.base.base_task import BaseDataPipelineTask
 from packages.storage.repositories import get_connection_params, ClientFactory
 from packages.storage.repositories.transfer_aggregation_repository import TransferAggregationRepository
 from packages.storage.repositories.money_flows_repository import MoneyFlowsRepository
 from packages.storage.repositories.feature_repository import FeatureRepository
 from packages.storage.repositories.transfer_repository import TransferRepository
-from packages import setup_logger
 from packages.utils import calculate_time_window
 
 
-class BuildFeaturesTask(BaseDataPipelineTask, Singleton):
+class BuildFeaturesTask(BaseTask, Singleton):
 
     def execute_task(self, context: BaseTaskContext):
-
-        service_name = f'features-{context.network}-build-features'
-        setup_logger(service_name)
-
         connection_params = get_connection_params(context.network)
 
         client_factory = ClientFactory(connection_params)

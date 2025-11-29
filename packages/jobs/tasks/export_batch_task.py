@@ -1,20 +1,17 @@
 from pathlib import Path
 from typing import List, Dict
-from collections import Counter
 import pandas as pd
 import json
 import hashlib
 from loguru import logger
 from datetime import datetime, timedelta, timezone
 import os
-from dotenv import load_dotenv
 from celery_singleton import Singleton
+from chainswarm_core.jobs import BaseTask, BaseTaskContext
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
-from packages.jobs.base import BaseTaskContext
 from packages.jobs.celery_app import celery_app
-from packages.jobs.base.base_task import BaseDataPipelineTask
 from packages.storage.repositories import get_connection_params, ClientFactory
 from packages.storage.repositories.alerts_repository import AlertsRepository
 from packages.storage.repositories.feature_repository import FeatureRepository
@@ -22,15 +19,11 @@ from packages.storage.repositories.alert_cluster_repository import AlertClusterR
 from packages.storage.repositories.money_flows_repository import MoneyFlowsRepository
 from packages.storage.repositories.address_label_repository import AddressLabelRepository
 from packages.storage.repositories.structural_pattern_repository import StructuralPatternRepository
-from packages import setup_logger
 
 
-class ExportBatchTask(BaseDataPipelineTask, Singleton):
+class ExportBatchTask(BaseTask, Singleton):
 
     def execute_task(self, context: BaseTaskContext):
-        service_name = f'export-{context.network}-batch-export'
-        setup_logger(service_name)
-
         connection_params = get_connection_params(context.network)
         
         base_path = Path(os.getenv('BATCH_EXPORT_PATH', str(PROJECT_ROOT / 'data' / 'batches')))

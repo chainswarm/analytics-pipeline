@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from dotenv import load_dotenv
 from packages.jobs.tasks.build_features_task import BuildFeaturesTask
-from packages.jobs.base.task_models import BaseTaskContext
+from packages.jobs.base.task_models import AnalyticsTaskContext
 import argparse
 
 
@@ -15,7 +15,7 @@ def main():
     
     load_dotenv()
     
-    context = BaseTaskContext(
+    context = AnalyticsTaskContext(
         network=args.network,
         window_days=args.window_days,
         processing_date=args.processing_date,

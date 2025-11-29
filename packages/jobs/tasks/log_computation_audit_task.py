@@ -1,21 +1,15 @@
 from datetime import datetime
 from loguru import logger
 from celery_singleton import Singleton
-
-from packages.jobs.base import BaseTaskContext
+from chainswarm_core.jobs import BaseTask, BaseTaskContext
 from packages.jobs.celery_app import celery_app
-from packages.jobs.base.base_task import BaseDataPipelineTask
 from packages.storage.repositories import get_connection_params, ClientFactory
 from packages.storage.repositories.computation_audit_repository import ComputationAuditRepository
-from packages import setup_logger
 
 
-class LogComputationAuditTask(BaseDataPipelineTask, Singleton):
+class LogComputationAuditTask(BaseTask, Singleton):
 
     def execute_task(self, context: BaseTaskContext):
-        service_name = f'audit-{context.network}-log-completion'
-        setup_logger(service_name)
-
         connection_params = get_connection_params(context.network)
         client_factory = ClientFactory(connection_params)
         

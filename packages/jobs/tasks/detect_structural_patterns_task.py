@@ -1,26 +1,18 @@
-from dotenv import load_dotenv
 from loguru import logger
 from celery_singleton import Singleton
-
+from chainswarm_core.jobs import BaseTask, BaseTaskContext
 from packages.analyzers.structural.structural_pattern_analyzer import StructuralPatternAnalyzer
-from packages.jobs.base import BaseTaskContext
 from packages.jobs.celery_app import celery_app
-from packages.jobs.base.base_task import BaseDataPipelineTask
 from packages.storage.repositories import get_connection_params, ClientFactory
 from packages.storage.repositories.money_flows_repository import MoneyFlowsRepository
 from packages.storage.repositories.structural_pattern_repository import StructuralPatternRepository
 from packages.storage.repositories.address_label_repository import AddressLabelRepository
 from packages.utils import calculate_time_window
-from packages import setup_logger
 
 
-class DetectStructuralPatternsTask(BaseDataPipelineTask, Singleton):
+class DetectStructuralPatternsTask(BaseTask, Singleton):
 
     def execute_task(self, context: BaseTaskContext):
-
-        service_name = f'analytics-{context.network}-structural-patterns-detection'
-        setup_logger(service_name)
-
         connection_params = get_connection_params(context.network)
 
         client_factory = ClientFactory(connection_params)

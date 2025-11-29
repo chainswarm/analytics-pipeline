@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 from dotenv import load_dotenv
+from chainswarm_core.jobs import BaseTaskContext
+from chainswarm_core.observability import setup_logger
 from packages.jobs.tasks.detect_structural_patterns_task import DetectStructuralPatternsTask
-from packages.jobs.base.task_models import BaseTaskContext
 import argparse
 
 
@@ -13,6 +14,10 @@ def main():
     args = parser.parse_args()
     
     load_dotenv()
+    
+    # Setup logger once for the task
+    service_name = f'analytics-{args.network}-structural-patterns-detection'
+    setup_logger(service_name)
     
     context = BaseTaskContext(
         network=args.network,

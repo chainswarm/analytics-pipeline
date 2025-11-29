@@ -10,13 +10,15 @@ import argparse
 import os
 import sys
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
 from loguru import logger
 
 # Add project root to python path
 sys.path.append(os.getcwd())
 
+from chainswarm_core.observability import setup_logger
 from packages.jobs.tasks.daily_analytics_pipeline_task import DailyAnalyticsPipelineTask
-from packages.jobs.base.task_models import BaseTaskContext
+from packages.jobs.base.task_models import AnalyticsTaskContext
 
 def main():
     parser = argparse.ArgumentParser(description="Run daily analytics pipeline manually")
@@ -26,13 +28,19 @@ def main():
     parser.add_argument("--batch-size", type=int, default=1024, help="Batch size for processing")
     args = parser.parse_args()
 
+    load_dotenv()
+    
+    # Setup logger once for the entire pipeline
+    service_name = f'analytics-{args.network}-daily-pipeline'
+    setup_logger(service_name)
+
     try:
         # Validate date
         datetime.strptime(args.processing_date, "%Y-%m-%d")
         
         logger.info(f"Starting manual Daily Analytics Pipeline for {args.network} on {args.processing_date}")
         
-        context = BaseTaskContext(
+        context = AnalyticsTaskContext(
             network=args.network,
             window_days=args.window_days,
             processing_date=args.processing_date,

@@ -6,8 +6,8 @@ from decimal import Decimal
 
 from clickhouse_connect.driver import Client
 
+from chainswarm_core.observability import log_errors
 from packages.storage.repositories.base_repository import BaseRepository
-from packages.utils.decorators import log_errors
 from packages.storage.repositories.utils import row_to_dict
 
 

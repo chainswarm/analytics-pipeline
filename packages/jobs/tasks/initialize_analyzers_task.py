@@ -1,19 +1,13 @@
-from dotenv import load_dotenv
 from celery_singleton import Singleton
-
-from packages.jobs.base.task_models import BaseTaskContext
+from chainswarm_core.jobs import BaseTask, BaseTaskContext
+from chainswarm_core.observability import setup_logger
 from packages.jobs.celery_app import celery_app
-from packages.jobs.base.base_task import BaseDataPipelineTask
 from packages.storage.repositories import get_connection_params, ClientFactory, MigrateSchema
-from packages import setup_logger
 
 
-class InitializeAnalyzersTask(BaseDataPipelineTask, Singleton):
+class InitializeAnalyzersTask(BaseTask, Singleton):
 
     def execute_task(self, context: BaseTaskContext):
-        service_name = f'analytics-{context.network}-initialize-analyzers'
-        setup_logger(service_name)
-
         connection_params = get_connection_params(context.network)
         
         from packages.storage.repositories import create_database

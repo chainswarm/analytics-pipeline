@@ -5,7 +5,7 @@ import pandas as pd
 from clickhouse_connect.driver import Client
 from loguru import logger
 
-from packages.utils.decorators import log_errors
+from chainswarm_core.observability import log_errors
 
 class ParquetLoader:
     """Loads Parquet files into Local ClickHouse tables."""
