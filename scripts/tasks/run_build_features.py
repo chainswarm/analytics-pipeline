@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from dotenv import load_dotenv
+from chainswarm_core.observability import setup_logger
 from packages.jobs.tasks.build_features_task import BuildFeaturesTask
 from packages.jobs.base.task_models import AnalyticsTaskContext
 import argparse
@@ -14,6 +15,10 @@ def main():
     args = parser.parse_args()
     
     load_dotenv()
+    
+    # Setup logger once for the task
+    service_name = f'features-{args.network}-build-features'
+    setup_logger(service_name)
     
     context = AnalyticsTaskContext(
         network=args.network,
