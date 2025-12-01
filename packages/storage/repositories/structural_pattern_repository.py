@@ -6,9 +6,8 @@ from decimal import Decimal
 from clickhouse_connect.driver import Client
 from loguru import logger
 
-from packages.storage.repositories.base_repository import BaseRepository
-from packages.storage.repositories.utils import row_to_dict
-from packages.storage.constants import PatternTypes, DetectionMethods
+from chainswarm_core.db import BaseRepository, row_to_dict
+from chainswarm_core.constants.patterns import PatternTypes, DetectionMethods
 
 
 class StructuralPatternRepository(BaseRepository):

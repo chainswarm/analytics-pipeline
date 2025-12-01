@@ -5,7 +5,7 @@ import numpy as np
 from loguru import logger
 
 from packages.analyzers.structural.base_detector import BasePatternDetector
-from packages.storage.constants import PatternTypes, DetectionMethods
+from chainswarm_core.constants.patterns import PatternTypes, DetectionMethods
 from packages.utils.pattern_utils import generate_pattern_hash, generate_pattern_id
 
 

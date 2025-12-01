@@ -1,7 +1,7 @@
 from typing import List, Dict
-from packages.storage.repositories.base_repository import BaseRepository
-from packages.storage.repositories.utils import row_to_dict
-from packages.storage.constants import AddressTypes, TrustLevels, get_address_type_risk_level
+from chainswarm_core.db import BaseRepository, row_to_dict
+from chainswarm_core import AddressTypes, TrustLevels
+from chainswarm_core.constants.risk import get_address_type_risk_level
 
 
 class AddressLabelRepository(BaseRepository):

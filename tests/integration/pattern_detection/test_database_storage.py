@@ -12,7 +12,7 @@ Run with:
 import pytest
 import time
 from packages.storage.repositories.structural_pattern_repository import StructuralPatternRepository
-from packages.storage.constants import PatternTypes
+from chainswarm_core.constants.patterns import PatternTypes
 
 
 class TestPatternDatabaseStorage:

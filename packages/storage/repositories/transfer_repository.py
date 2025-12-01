@@ -3,9 +3,8 @@ from __future__ import annotations
 from typing import Iterable, Dict, List, Optional, Any, Union, Tuple
 from clickhouse_connect.driver import Client
 from chainswarm_core.observability import log_errors
+from chainswarm_core.db import BaseRepository, row_to_dict
 from packages.storage import DEFAULT_ASSET_CONTRACT
-from packages.storage.repositories.base_repository import BaseRepository
-from packages.storage.repositories.utils import row_to_dict
 
 
 class TransferRepository(BaseRepository):

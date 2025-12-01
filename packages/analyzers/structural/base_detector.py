@@ -3,7 +3,7 @@ from typing import Dict, List
 import networkx as nx
 from loguru import logger
 
-from packages.storage.constants import AddressTypes, TrustLevels
+from chainswarm_core import AddressTypes, TrustLevels
 
 
 class BasePatternDetector(ABC):

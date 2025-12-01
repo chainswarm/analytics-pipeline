@@ -7,7 +7,6 @@ from clickhouse_connect.driver import Client
 from loguru import logger
 
 from chainswarm_core.observability import log_errors
-from packages.storage.repositories.base_repository import BaseRepository
 
 
 def _validate_temporal_patterns(patterns_dict: Dict[str, Any], pattern_type: str = "temporal") -> Dict[str, Any]:

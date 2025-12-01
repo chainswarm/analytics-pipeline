@@ -1,7 +1,7 @@
 from datetime import datetime
 from clickhouse_connect.driver import Client
 
-from packages.storage.repositories.base_repository import BaseRepository
+from chainswarm_core.db import BaseRepository
 
 
 class ComputationAuditRepository(BaseRepository):
