@@ -1,9 +1,10 @@
+from chainswarm_core import ClientFactory
+from chainswarm_core.db import get_connection_params
 from loguru import logger
 from celery_singleton import Singleton
 from chainswarm_core.jobs import BaseTask, BaseTaskContext
 from packages.analyzers.structural.structural_pattern_analyzer import StructuralPatternAnalyzer
 from packages.jobs.celery_app import celery_app
-from packages.storage.repositories import get_connection_params, ClientFactory
 from packages.storage.repositories.money_flows_repository import MoneyFlowsRepository
 from packages.storage.repositories.structural_pattern_repository import StructuralPatternRepository
 from packages.storage.repositories.address_label_repository import AddressLabelRepository

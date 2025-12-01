@@ -1,4 +1,4 @@
-chainswarm-core>=0.1.8
+chainswarm-core>=0.1.10
 
 clickhouse-connect>=0.10.0
 celery
@@ -27,11 +27,5 @@ prometheus-client
 
 boto3
 
- igraph
- leidenalg
-# Notebook Integration
-jupyterlab
-matplotlib
-seaborn
-plotly
-pyvis
+igraph
+leidenalg

@@ -6,7 +6,7 @@ services:
     container_name: infra-analytics-clickhouse
     image: clickhouse/clickhouse-server:latest
     ports:
-      - "8125:8123"
+      - "8123:8123"
       - "9005:9000"
       - "9015:9009"
     volumes:

@@ -1,9 +1,11 @@
 from datetime import datetime
+
+from chainswarm_core import ClientFactory
+from chainswarm_core.db import get_connection_params
 from loguru import logger
 from celery_singleton import Singleton
 from chainswarm_core.jobs import BaseTask, BaseTaskContext
 from packages.jobs.celery_app import celery_app
-from packages.storage.repositories import get_connection_params, ClientFactory
 from packages.storage.repositories.computation_audit_repository import ComputationAuditRepository
 
 
@@ -19,7 +21,7 @@ class LogComputationAuditTask(BaseTask, Singleton):
             computation_audit_repository.log_completion(
                 window_days=context.window_days,
                 processing_date=context.processing_date,
-                created_at=context.pipeline_started_at,
+                created_at=datetime.now(),
                 end_at=datetime.now()
             )
             

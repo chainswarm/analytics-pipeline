@@ -1,5 +1,4 @@
-from abc import ABC, abstractmethod
-from datetime import datetime
+from abc import ABC
 import clickhouse_connect
 import time
 

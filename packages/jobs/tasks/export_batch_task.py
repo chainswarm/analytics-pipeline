@@ -3,6 +3,9 @@ from typing import List, Dict
 import pandas as pd
 import json
 import hashlib
+
+from chainswarm_core import ClientFactory
+from chainswarm_core.db import get_connection_params
 from loguru import logger
 from datetime import datetime, timedelta, timezone
 import os
@@ -12,10 +15,7 @@ from chainswarm_core.jobs import BaseTask, BaseTaskContext
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 from packages.jobs.celery_app import celery_app
-from packages.storage.repositories import get_connection_params, ClientFactory
-from packages.storage.repositories.alerts_repository import AlertsRepository
 from packages.storage.repositories.feature_repository import FeatureRepository
-from packages.storage.repositories.alert_cluster_repository import AlertClusterRepository
 from packages.storage.repositories.money_flows_repository import MoneyFlowsRepository
 from packages.storage.repositories.address_label_repository import AddressLabelRepository
 from packages.storage.repositories.structural_pattern_repository import StructuralPatternRepository
@@ -37,9 +37,7 @@ class ExportBatchTask(BaseTask, Singleton):
 
         client_factory = ClientFactory(connection_params)
         with client_factory.client_context() as client:
-            alerts_repository = AlertsRepository(client)
             features_repository = FeatureRepository(client)
-            clusters_repository = AlertClusterRepository(client)
             money_flows_repository = MoneyFlowsRepository(client)
             address_label_repository = AddressLabelRepository(client)
             patterns_repository = StructuralPatternRepository(client)
@@ -52,17 +50,13 @@ class ExportBatchTask(BaseTask, Singleton):
             labels_export_dir = base_path / 'risk-scoring' / 'address-labels'
             labels_export_dir.mkdir(parents=True, exist_ok=True)
             
-            alerts = self._load_alerts(alerts_repository, context.processing_date, context.window_days)
             features = self._load_features(features_repository, context.processing_date, context.window_days)
-            clusters = self._load_clusters(clusters_repository, context.processing_date, context.window_days)
             money_flows = self._load_money_flows(money_flows_repository, context.processing_date, context.window_days)
             address_labels = self._load_address_labels(address_label_repository, context.network)
             patterns = self._load_patterns(patterns_repository, context.processing_date, context.window_days)
             
             file_paths = {}
-            file_paths['alerts'] = self._export_parquet(alerts, export_dir / 'alerts.parquet')
             file_paths['features'] = self._export_parquet(features, export_dir / 'features.parquet')
-            file_paths['clusters'] = self._export_parquet(clusters, export_dir / 'clusters.parquet')
             file_paths['money_flows'] = self._export_parquet(money_flows, export_dir / 'money_flows.parquet')
             file_paths['patterns'] = self._export_parquet(patterns, export_dir / 'patterns.parquet')
             
@@ -71,7 +65,7 @@ class ExportBatchTask(BaseTask, Singleton):
             
             meta = self._generate_metadata(
                 context.network, context.processing_date, context.window_days,
-                alerts, features, clusters, money_flows, address_labels, patterns,
+                features, money_flows, address_labels, patterns,
                 file_paths
             )
             
@@ -120,30 +114,7 @@ class ExportBatchTask(BaseTask, Singleton):
         window_days: int
     ) -> Path:
         return base_path / 'risk-scoring' / 'snapshots' / network / processing_date / str(window_days)
-    
-    def _load_alerts(self, alerts_repository: AlertsRepository, processing_date: str, window_days: int) -> List[Dict]:
-        logger.info("Loading alerts")
-        
-        alerts = alerts_repository.get_all_alerts(
-            window_days=window_days,
-            processing_date=processing_date,
-            limit=1_000_000
-        )
-        
-        if not alerts:
-            raise ValueError(f"No alerts found for window_days={window_days}, processing_date={processing_date}")
-        
-        available_cols = list(alerts[0].keys())
-        export_cols = [col for col in available_cols if col != '_version']
-        
-        filtered_alerts = [
-            {col: alert[col] for col in export_cols}
-            for alert in alerts
-        ]
-        
-        logger.info(f"Loaded {len(filtered_alerts)} alerts")
-        return filtered_alerts
-    
+
     def _load_features(self, features_repository: FeatureRepository, processing_date: str, window_days: int) -> List[Dict]:
         logger.info("Loading features")
         
@@ -166,31 +137,7 @@ class ExportBatchTask(BaseTask, Singleton):
         
         logger.info(f"Loaded {len(filtered_features)} feature rows")
         return filtered_features
-    
-    def _load_clusters(self, clusters_repository: AlertClusterRepository, processing_date: str, window_days: int) -> List[Dict]:
-        logger.info("Loading clusters")
-        
-        clusters = clusters_repository.get_all_clusters(
-            window_days=window_days,
-            processing_date=processing_date,
-            limit=1_000_000
-        )
-        
-        if not clusters:
-            logger.warning(f"No clusters found for window_days={window_days}, processing_date={processing_date}")
-            return []
-        
-        available_cols = list(clusters[0].keys())
-        export_cols = [col for col in available_cols if col != '_version']
-        
-        filtered_clusters = [
-            {col: cluster[col] for col in export_cols}
-            for cluster in clusters
-        ]
-        
-        logger.info(f"Loaded {len(filtered_clusters)} clusters")
-        return filtered_clusters
-    
+
     def _load_money_flows(self, money_flows_repository: MoneyFlowsRepository, processing_date: str, window_days: int) -> List[Dict]:
         logger.info("Loading money flows")
         
@@ -272,9 +219,7 @@ class ExportBatchTask(BaseTask, Singleton):
         network: str,
         processing_date: str,
         window_days: int,
-        alerts: List[Dict],
         features: List[Dict],
-        clusters: List[Dict],
         money_flows: List[Dict],
         address_labels: List[Dict],
         patterns: List[Dict],
@@ -295,9 +240,7 @@ class ExportBatchTask(BaseTask, Singleton):
             'generated_at': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
             
             'counts': {
-                'alerts': len(alerts),
                 'features': len(features),
-                'clusters': len(clusters),
                 'money_flows': len(money_flows),
                 'address_labels': len(address_labels),
                 'patterns': len(patterns)

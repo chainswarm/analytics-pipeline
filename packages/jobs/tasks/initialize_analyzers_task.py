@@ -1,8 +1,9 @@
 from celery_singleton import Singleton
+from chainswarm_core import create_database, ClientFactory
+from chainswarm_core.db import get_connection_params
 from chainswarm_core.jobs import BaseTask, BaseTaskContext
-from chainswarm_core.observability import setup_logger
 from packages.jobs.celery_app import celery_app
-from packages.storage.repositories import get_connection_params, ClientFactory, MigrateSchema
+from packages.storage.repositories import MigrateSchema
 
 
 class InitializeAnalyzersTask(BaseTask, Singleton):
@@ -10,7 +11,6 @@ class InitializeAnalyzersTask(BaseTask, Singleton):
     def execute_task(self, context: BaseTaskContext):
         connection_params = get_connection_params(context.network)
         
-        from packages.storage.repositories import create_database
         create_database(connection_params)
 
         client_factory = ClientFactory(connection_params)
