@@ -1,6 +1,7 @@
 from pathlib import Path
 from chainswarm_core.db import BaseMigrateSchema
 
+DATABASE_PREFIX = 'analytics'
 
 class MigrateSchema(BaseMigrateSchema):
     """ClickHouse schema migration manager for analytics pipeline"""
@@ -36,4 +37,4 @@ class MigrateSchema(BaseMigrateSchema):
         self.run_schemas_from_dir(self.analyzer_schemas, self.get_project_schema_dir())
 
 
-__all__ = ["MigrateSchema"]
+__all__ = ["MigrateSchema", "DATABASE_PREFIX"]

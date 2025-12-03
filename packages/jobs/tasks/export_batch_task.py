@@ -12,6 +12,8 @@ import os
 from celery_singleton import Singleton
 from chainswarm_core.jobs import BaseTask, BaseTaskContext
 
+from packages.storage import DATABASE_PREFIX
+
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 from packages.jobs.celery_app import celery_app
@@ -24,7 +26,7 @@ from packages.storage.repositories.structural_pattern_repository import Structur
 class ExportBatchTask(BaseTask, Singleton):
 
     def execute_task(self, context: BaseTaskContext):
-        connection_params = get_connection_params(context.network)
+        connection_params = get_connection_params(context.network, database_prefix=DATABASE_PREFIX)
         
         base_path = Path(os.getenv('BATCH_EXPORT_PATH', str(PROJECT_ROOT / 'data' / 'batches')))
         

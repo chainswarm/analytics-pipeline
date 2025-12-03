@@ -5,6 +5,7 @@ from celery_singleton import Singleton
 from chainswarm_core.jobs import BaseTask, BaseTaskContext
 from packages.analyzers.features.address_feature_analyzer import AddressFeatureAnalyzer
 from packages.jobs.celery_app import celery_app
+from packages.storage import DATABASE_PREFIX
 from packages.storage.repositories.transfer_aggregation_repository import TransferAggregationRepository
 from packages.storage.repositories.money_flows_repository import MoneyFlowsRepository
 from packages.storage.repositories.feature_repository import FeatureRepository
@@ -15,7 +16,7 @@ from packages.utils import calculate_time_window
 class BuildFeaturesTask(BaseTask, Singleton):
 
     def execute_task(self, context: BaseTaskContext):
-        connection_params = get_connection_params(context.network)
+        connection_params = get_connection_params(context.network, database_prefix=DATABASE_PREFIX)
 
         client_factory = ClientFactory(connection_params)
         with client_factory.client_context() as client:

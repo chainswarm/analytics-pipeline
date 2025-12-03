@@ -5,6 +5,7 @@ from celery_singleton import Singleton
 from chainswarm_core.jobs import BaseTask, BaseTaskContext
 from packages.analyzers.structural.structural_pattern_analyzer import StructuralPatternAnalyzer
 from packages.jobs.celery_app import celery_app
+from packages.storage import DATABASE_PREFIX
 from packages.storage.repositories.money_flows_repository import MoneyFlowsRepository
 from packages.storage.repositories.structural_pattern_repository import StructuralPatternRepository
 from packages.storage.repositories.address_label_repository import AddressLabelRepository
@@ -14,7 +15,7 @@ from packages.utils import calculate_time_window
 class DetectStructuralPatternsTask(BaseTask, Singleton):
 
     def execute_task(self, context: BaseTaskContext):
-        connection_params = get_connection_params(context.network)
+        connection_params = get_connection_params(context.network, database_prefix=DATABASE_PREFIX)
 
         client_factory = ClientFactory(connection_params)
         with client_factory.client_context() as client:

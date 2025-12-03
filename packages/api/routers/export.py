@@ -6,6 +6,8 @@ from chainswarm_core.db import get_connection_params
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from loguru import logger
+
+from packages.storage import DATABASE_PREFIX
 from packages.storage.repositories.feature_repository import FeatureRepository
 from packages.storage.repositories.structural_pattern_repository import StructuralPatternRepository
 from packages.storage.repositories.computation_audit_repository import ComputationAuditRepository
@@ -27,7 +29,7 @@ async def export_features(
     Supports Parquet export (Stream) or JSON pagination based on Accept header.
     """
     try:
-        params = get_connection_params(network)
+        params = get_connection_params(network, database_prefix=DATABASE_PREFIX)
         accept = request.headers.get('accept', '')
         
         client_factory = ClientFactory(params)
@@ -113,7 +115,7 @@ async def export_patterns(
     See packages/storage/schema/README.md for architecture details.
     """
     try:
-        params = get_connection_params(network)
+        params = get_connection_params(network, database_prefix=DATABASE_PREFIX)
         accept = request.headers.get('accept', '')
         
         client_factory = ClientFactory(params)
@@ -202,7 +204,7 @@ async def get_computation_audit_logs(
     ```
     """
     try:
-        params = get_connection_params(network)
+        params = get_connection_params(network, database_prefix=DATABASE_PREFIX)
         client_factory = ClientFactory(params)
         
         with client_factory.client_context() as client:

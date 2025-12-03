@@ -6,13 +6,14 @@ from loguru import logger
 from celery_singleton import Singleton
 from chainswarm_core.jobs import BaseTask, BaseTaskContext
 from packages.jobs.celery_app import celery_app
+from packages.storage import DATABASE_PREFIX
 from packages.storage.repositories.computation_audit_repository import ComputationAuditRepository
 
 
 class LogComputationAuditTask(BaseTask, Singleton):
 
     def execute_task(self, context: BaseTaskContext):
-        connection_params = get_connection_params(context.network)
+        connection_params = get_connection_params(context.network, database_prefix=DATABASE_PREFIX)
         client_factory = ClientFactory(connection_params)
         
         with client_factory.client_context() as client:

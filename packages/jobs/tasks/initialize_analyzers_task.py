@@ -3,14 +3,13 @@ from chainswarm_core import create_database, ClientFactory
 from chainswarm_core.db import get_connection_params
 from chainswarm_core.jobs import BaseTask, BaseTaskContext
 from packages.jobs.celery_app import celery_app
-from packages.storage.repositories import MigrateSchema
+from packages.storage import MigrateSchema, DATABASE_PREFIX
 
 
 class InitializeAnalyzersTask(BaseTask, Singleton):
 
     def execute_task(self, context: BaseTaskContext):
-        connection_params = get_connection_params(context.network)
-        
+        connection_params = get_connection_params(context.network, database_prefix=DATABASE_PREFIX)
         create_database(connection_params)
 
         client_factory = ClientFactory(connection_params)

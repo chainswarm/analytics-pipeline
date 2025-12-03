@@ -1,5 +1,7 @@
 import os
 import boto3
+from botocore import UNSIGNED
+from botocore.config import Config
 from pathlib import Path
 from loguru import logger
 from botocore.exceptions import ClientError
@@ -7,7 +9,7 @@ from botocore.exceptions import ClientError
 from packages.ingestion.extractors.base import BaseExtractor
 
 class S3Extractor(BaseExtractor):
-    """Downloads Parquet files from S3."""
+    """Downloads Parquet files from S3. Supports both authenticated and public/anonymous access."""
 
     def __init__(self, output_dir: Path):
         super().__init__(output_dir)
@@ -17,20 +19,38 @@ class S3Extractor(BaseExtractor):
         self.s3_bucket = os.getenv('INGESTION_S3_BUCKET')
         self.s3_region = os.getenv('INGESTION_S3_REGION', 'us-east-1')
         
-        if not all([self.s3_endpoint, self.s3_access_key, self.s3_secret_key, self.s3_bucket]):
-             # Optional: could raise error here, but maybe user wants to use other extractors
-             logger.warning("S3 configuration incomplete. S3Extractor might fail if used.")
+        # Determine if we should use anonymous access (public buckets)
+        self.use_anonymous = not (self.s3_access_key and self.s3_secret_key)
+        
+        if not self.s3_bucket:
+            logger.warning("INGESTION_S3_BUCKET not set. S3Extractor will fail if used.")
+        elif self.use_anonymous:
+            logger.info("S3 credentials not provided. Using anonymous access for public bucket.")
+
+    def _create_s3_client(self):
+        """Create S3 client with appropriate authentication configuration."""
+        if self.use_anonymous:
+            # Use unsigned requests for public buckets
+            return boto3.client(
+                's3',
+                endpoint_url=self.s3_endpoint,
+                region_name=self.s3_region,
+                config=Config(signature_version=UNSIGNED)
+            )
+        else:
+            # Use authenticated access
+            return boto3.client(
+                's3',
+                endpoint_url=self.s3_endpoint,
+                aws_access_key_id=self.s3_access_key,
+                aws_secret_access_key=self.s3_secret_key,
+                region_name=self.s3_region
+            )
 
     def extract(self, network: str, processing_date: str, window_days: int) -> Path:
         logger.info(f"Starting S3 extraction for {network}/{processing_date}/{window_days}d")
         
-        s3 = boto3.client(
-            's3',
-            endpoint_url=self.s3_endpoint,
-            aws_access_key_id=self.s3_access_key,
-            aws_secret_access_key=self.s3_secret_key,
-            region_name=self.s3_region
-        )
+        s3 = self._create_s3_client()
         
         # Path structure matches ExportBatchTask: 
         # snapshots/{network}/{processing_date}/{window_days}

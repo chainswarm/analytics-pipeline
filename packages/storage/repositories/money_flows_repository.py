@@ -20,11 +20,10 @@ class MoneyFlowsRepository(BaseRepository):
         self.table_name = table_name if table_name else "core_money_flows_view"
 
     @log_errors
-    def get_flows_by_volume(self, min_usd: Decimal, limit: int = 1000) -> List[Dict]:
+    def get_flows_by_volume(self, min_usd: Decimal) -> List[Dict]:
 
         params = {
             "min_usd": str(min_usd),
-            "limit": int(limit),
         }
         
         query = f"""
@@ -32,7 +31,6 @@ class MoneyFlowsRepository(BaseRepository):
         FROM {self.table_name}
         WHERE amount_usd_sum >= %(min_usd)s
         ORDER BY amount_usd_sum DESC
-        LIMIT %(limit)s
         """
         
         result = self.client.query(query, parameters=params)
@@ -293,8 +291,7 @@ class MoneyFlowsRepository(BaseRepository):
     def get_windowed_flows_from_transfers(
         self,
         start_timestamp_ms: int,
-        end_timestamp_ms: int,
-        limit: int = 1_000_000
+        end_timestamp_ms: int
     ) -> List[Dict]:
         """
         Query transfers and aggregate flows for time window.
@@ -305,15 +302,13 @@ class MoneyFlowsRepository(BaseRepository):
         Args:
             start_timestamp_ms: Start of time window in milliseconds
             end_timestamp_ms: End of time window in milliseconds
-            limit: Maximum number of flows to return (default 1M)
-            
+
         Returns:
             List of aggregated money flows with reciprocity and patterns
         """
         params = {
             "start_ts": int(start_timestamp_ms),
             "end_ts": int(end_timestamp_ms),
-            "limit": int(limit)
         }
         
         query = """
@@ -371,7 +366,6 @@ class MoneyFlowsRepository(BaseRepository):
             ON pt.from_address = r.from_address
             AND pt.to_address = r.to_address
         ORDER BY pt.amount_usd_sum DESC
-        LIMIT %(limit)s
         """
         
         result = self.client.query(query, parameters=params)

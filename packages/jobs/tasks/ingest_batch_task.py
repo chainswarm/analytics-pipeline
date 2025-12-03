@@ -1,10 +1,12 @@
 import os
+
+from chainswarm_core import get_connection_params, ClientFactory
 from loguru import logger
 from celery_singleton import Singleton
 from chainswarm_core.jobs import BaseTask, BaseTaskContext
 from packages.jobs.celery_app import celery_app
-from packages.storage.repositories import get_connection_params, ClientFactory
 from packages.ingestion.service import IngestionService
+from packages.storage import DATABASE_PREFIX
 
 
 class IngestBatchTask(BaseTask, Singleton):
@@ -22,8 +24,7 @@ class IngestBatchTask(BaseTask, Singleton):
             }
         )
 
-        connection_params = get_connection_params(context.network)
-        connection_params['database'] = f"analytics_{context.network}"
+        connection_params = get_connection_params(context.network, database_prefix=DATABASE_PREFIX)
         client_factory = ClientFactory(connection_params)
 
         with client_factory.client_context() as client:

@@ -1,4 +1,4 @@
-chainswarm-core>=0.1.10
+chainswarm-core>=0.1.11
 
 clickhouse-connect>=0.10.0
 celery
