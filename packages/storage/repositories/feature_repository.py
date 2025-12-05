@@ -228,7 +228,7 @@ class FeatureRepository(BaseRepository):
 
     def get_features_count(self) -> int:
 
-        query = f"SELECT count() FROM {self.features_table_name}"
+        query = f"SELECT count() FROM {self.features_table_name} FINAL"
         
         result = self.client.query(query)
         count = result.result_rows[0][0]
@@ -257,7 +257,7 @@ class FeatureRepository(BaseRepository):
         
         query = f"""
         SELECT *
-        FROM {self.features_table_name}
+        FROM {self.features_table_name} FINAL
         WHERE {where_clause}
         ORDER BY total_volume_usd DESC
         LIMIT %(limit)s OFFSET %(offset)s
@@ -288,7 +288,7 @@ class FeatureRepository(BaseRepository):
         
         query = f"""
         SELECT count()
-        FROM {self.features_table_name}
+        FROM {self.features_table_name} FINAL
         WHERE {where_clause}
         """
         
@@ -304,7 +304,7 @@ class FeatureRepository(BaseRepository):
 
         query = f"""
         SELECT *
-        FROM {self.features_table_name}
+        FROM {self.features_table_name} FINAL
         WHERE total_volume_usd >= %(min_volume)s
         ORDER BY total_volume_usd DESC
         LIMIT %(limit)s
@@ -326,7 +326,7 @@ class FeatureRepository(BaseRepository):
         
         query = f"""
         SELECT *
-        FROM {self.features_table_name}
+        FROM {self.features_table_name} FINAL
         ORDER BY total_volume_usd DESC
         LIMIT %(limit)s
         """
@@ -355,7 +355,7 @@ class FeatureRepository(BaseRepository):
             countIf(total_volume_usd >= 100000) as high_volume,
             countIf(total_volume_usd >= 10000 AND total_volume_usd < 100000) as medium_volume,
             countIf(total_volume_usd < 10000) as low_volume
-        FROM {self.features_table_name}
+        FROM {self.features_table_name} FINAL
         """
         
         result = self.client.query(query)
@@ -377,7 +377,7 @@ class FeatureRepository(BaseRepository):
 
         query = f"""
         SELECT *
-        FROM {self.features_table_name}
+        FROM {self.features_table_name} FINAL
         ORDER BY total_volume_usd DESC
         """
         
@@ -519,7 +519,7 @@ class FeatureRepository(BaseRepository):
 
         query = f"""
         SELECT *
-        FROM {self.features_table_name}
+        FROM {self.features_table_name} FINAL
         WHERE address IN ({addresses_str})
         """
 

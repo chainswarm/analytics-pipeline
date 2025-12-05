@@ -78,7 +78,7 @@ class TransferAggregationRepository:
             SELECT
                 asset_contract,
                 argMax(price_usd, price_date) as price_usd
-            FROM core_asset_prices
+            FROM core_asset_prices FINAL
             WHERE price_date <= today()
             GROUP BY asset_contract
         ),
@@ -95,7 +95,7 @@ class TransferAggregationRepository:
                 argMax(asset_symbol, amount * COALESCE(p.price_usd, 0)) as dominant_asset,
                 arrayMap(h -> toUInt16(countIf(toHour(toDateTime(block_timestamp / 1000)) = h)), range(24)) as hourly_pattern,
                 arrayMap(d -> toUInt16(countIf(toDayOfWeek(toDateTime(block_timestamp / 1000)) = d + 1)), range(7)) as weekly_pattern
-            FROM core_transfers t
+            FROM core_transfers FINAL t
             LEFT JOIN latest_prices p ON t.asset_contract = p.asset_contract
             WHERE block_timestamp >= %(start_ts)s
               AND block_timestamp < %(end_ts)s
@@ -176,7 +176,7 @@ class TransferAggregationRepository:
             sum(fee)                AS fee_sum,
             min(block_timestamp)    AS first_seen_timestamp,
             max(block_timestamp)    AS last_seen_timestamp
-        FROM core_transfers
+        FROM core_transfers FINAL
         WHERE block_timestamp >= %(t0)s
           AND block_timestamp <  %(t1)s
         GROUP BY from_address, to_address, asset_contract, asset_symbol
@@ -205,11 +205,11 @@ class TransferAggregationRepository:
         SELECT address
         FROM (
             SELECT from_address AS address
-            FROM core_transfers
+            FROM core_transfers FINAL
             WHERE block_timestamp >= %(t0)s AND block_timestamp < %(t1)s
             UNION ALL
             SELECT to_address AS address
-            FROM core_transfers
+            FROM core_transfers FINAL
             WHERE block_timestamp >= %(t0)s AND block_timestamp < %(t1)s
         )
         GROUP BY address
@@ -265,7 +265,7 @@ class TransferAggregationRepository:
                 CASE WHEN from_address IN ({address_list}) THEN from_address ELSE to_address END AS address,
                 toHour(toDateTime(block_timestamp / 1000)) AS hour_of_day,
                 toDayOfWeek(toDateTime(block_timestamp / 1000)) AS day_of_week
-            FROM core_transfers
+            FROM core_transfers FINAL
             WHERE (from_address IN ({address_list}) OR to_address IN ({address_list}))
               AND block_timestamp >= %(t0)s
               AND block_timestamp < %(t1)s
@@ -372,7 +372,7 @@ class TransferAggregationRepository:
         
         query = f"""
             SELECT amount
-            FROM core_transfers
+            FROM core_transfers FINAL
             WHERE (from_address = %(address)s OR to_address = %(address)s)
               AND block_timestamp >= %(start_ts)s
               AND block_timestamp <= %(end_ts)s
@@ -554,7 +554,7 @@ class TransferAggregationRepository:
                 toDayOfWeek(toDateTime(block_timestamp / 1000)) AS day_of_week,
                 toDate(toDateTime(block_timestamp / 1000)) AS d,
                 toFloat64(amount) AS amount
-            FROM core_transfers
+            FROM core_transfers FINAL
             WHERE (from_address IN ({address_list}) OR to_address IN ({address_list}))
               AND block_timestamp >= %(t0)s
               AND block_timestamp < %(t1)s
@@ -623,7 +623,7 @@ class TransferAggregationRepository:
                 from_address,
                 to_address,
                 toFloat64(amount) AS amt
-            FROM core_transfers
+            FROM core_transfers FINAL
             WHERE (from_address IN ({address_list}) OR to_address IN ({address_list}))
               AND block_timestamp >= %(t0)s
               AND block_timestamp <  %(t1)s
@@ -712,7 +712,7 @@ class TransferAggregationRepository:
                 CASE WHEN from_address IN ({address_list}) THEN to_address   ELSE from_address   END AS counterparty,
                 block_timestamp AS ts,
                 toFloat64(amount) AS amt
-            FROM core_transfers
+            FROM core_transfers FINAL
             WHERE (from_address IN ({address_list}) OR to_address IN ({address_list}))
               AND block_timestamp >= %(t0)s
               AND block_timestamp <  %(t1)s

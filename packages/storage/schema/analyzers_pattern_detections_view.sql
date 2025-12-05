@@ -82,7 +82,7 @@ SELECT
     evidence_volume_usd,
     detection_method,
     _version
-FROM analyzers_patterns_cycle
+FROM analyzers_patterns_cycle FINAL
 
 UNION ALL
 
@@ -161,7 +161,7 @@ SELECT
     evidence_volume_usd,
     detection_method,
     _version
-FROM analyzers_patterns_layering
+FROM analyzers_patterns_layering FINAL
 
 UNION ALL
 
@@ -240,7 +240,7 @@ SELECT
     evidence_volume_usd,
     detection_method,
     _version
-FROM analyzers_patterns_network
+FROM analyzers_patterns_network FINAL
 
 UNION ALL
 
@@ -319,7 +319,7 @@ SELECT
     evidence_volume_usd,
     detection_method,
     _version
-FROM analyzers_patterns_proximity
+FROM analyzers_patterns_proximity FINAL
 
 UNION ALL
 
@@ -398,7 +398,7 @@ SELECT
     evidence_volume_usd,
     detection_method,
     _version
-FROM analyzers_patterns_motif
+FROM analyzers_patterns_motif FINAL
 
 UNION ALL
 
@@ -477,7 +477,7 @@ SELECT
     evidence_volume_usd,
     detection_method,
     _version
-FROM analyzers_patterns_burst
+FROM analyzers_patterns_burst FINAL
 
 UNION ALL
 
@@ -556,4 +556,4 @@ SELECT
     evidence_volume_usd,
     detection_method,
     _version
-FROM analyzers_patterns_threshold;
+FROM analyzers_patterns_threshold FINAL;

@@ -54,8 +54,8 @@ class AddressLabelRepository(BaseRepository):
         
         query = f"""
         SELECT *
-        FROM core_address_labels
-        WHERE network = %(network)s 
+        FROM core_address_labels FINAL
+        WHERE network = %(network)s
           AND address IN ({placeholders})
           AND address_type = %(exchange_type)s
           AND trust_level IN (%(verified)s, %(official)s)
@@ -82,7 +82,7 @@ class AddressLabelRepository(BaseRepository):
         
         query = f"""
         SELECT *
-        FROM core_address_labels
+        FROM core_address_labels FINAL
         WHERE network = %(network)s
           AND address IN ({placeholders})
         ORDER BY trust_level DESC, confidence_score DESC
@@ -99,7 +99,7 @@ class AddressLabelRepository(BaseRepository):
     def get_all_labels(self, network: str, limit: int = 10_000_000) -> List[Dict]:
         query = """
         SELECT *
-        FROM core_address_labels
+        FROM core_address_labels FINAL
         WHERE network = %(network)s
         ORDER BY address, trust_level DESC, confidence_score DESC
         LIMIT %(limit)s

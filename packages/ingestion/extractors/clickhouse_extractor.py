@@ -52,24 +52,24 @@ class ClickHouseExtractor(BaseExtractor):
             try:
                 query = f"""
                 SELECT *
-                FROM {table_name}
+                FROM {table_name} FINAL
                 WHERE block_timestamp >= {start_timestamp}
                   AND block_timestamp < {end_timestamp}
                 """
                 
                 if table_name == 'core_assets':
                     # Assets might not have block_timestamp or we want all of them
-                    query = f"SELECT * FROM {table_name} WHERE network = '{network}'"
+                    query = f"SELECT * FROM {table_name} FINAL WHERE network = '{network}'"
 
                 if table_name == 'core_address_labels':
                     # Address labels are network specific but not necessarily time-bound for this window
-                    query = f"SELECT * FROM {table_name} WHERE network = '{network}'"
+                    query = f"SELECT * FROM {table_name} FINAL WHERE network = '{network}'"
                 
                 if table_name == 'core_asset_prices':
                     # Price table uses price_date
                      query = f"""
-                     SELECT * 
-                     FROM {table_name} 
+                     SELECT *
+                     FROM {table_name} FINAL
                      WHERE price_date >= toDate('{processing_date}') - {window_days}
                        AND price_date <= toDate('{processing_date}')
                      """

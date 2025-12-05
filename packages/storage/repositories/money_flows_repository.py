@@ -259,7 +259,7 @@ class MoneyFlowsRepository(BaseRepository):
             al.label,
             al.address_type
         FROM {self.table_name} mf
-        INNER JOIN core_address_labels al
+        INNER JOIN core_address_labels FINAL al
             ON mf.to_address = al.address
             AND al.network = %(network)s
             AND al.address_type = 'exchange'
@@ -325,7 +325,7 @@ class MoneyFlowsRepository(BaseRepository):
                 argMax(asset_symbol, amount_usd) as dominant_asset,
                 arrayMap(h -> countEqual(groupArray(toHour(toDateTime(intDiv(block_timestamp, 1000)))), h), range(24)) as hourly_pattern,
                 arrayMap(d -> countEqual(groupArray(toDayOfWeek(toDateTime(intDiv(block_timestamp, 1000)))), d), range(1, 8)) as weekly_pattern
-            FROM core_transfers
+            FROM core_transfers FINAL
             WHERE block_timestamp >= %(start_ts)s
               AND block_timestamp < %(end_ts)s
             GROUP BY from_address, to_address

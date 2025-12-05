@@ -56,9 +56,9 @@ class TransferRepository(BaseRepository):
             "_version",
         ])
 
-    @log_errors  
+    @log_errors
     def latest_block_height(self) -> Optional[int]:
-        block_height = self.client.command(f"SELECT coalesce(max(block_height), 0) as block_height FROM core_transfers")
+        block_height = self.client.command(f"SELECT coalesce(max(block_height), 0) as block_height FROM core_transfers FINAL")
         return block_height
 
     @log_errors
@@ -95,7 +95,7 @@ class TransferRepository(BaseRepository):
 
         q = f"""
         SELECT *
-        FROM core_transfers
+        FROM core_transfers FINAL
         WHERE {" AND ".join(conds)}
         ORDER BY {self._order_by}
         LIMIT %(lim)s
@@ -112,7 +112,7 @@ class TransferRepository(BaseRepository):
             asset_symbol,
             asset_contract,
             min(block_timestamp) as first_seen_timestamp
-        FROM core_transfers
+        FROM core_transfers FINAL
         WHERE asset_symbol != ''
         AND asset_contract != ''
         GROUP BY asset_symbol, asset_contract
@@ -126,7 +126,7 @@ class TransferRepository(BaseRepository):
     def get_address_amounts_for_statistics(self, address: str, start_ts: int, end_ts: int) -> List[float]:
         query = """
             SELECT amount
-            FROM core_transfers
+            FROM core_transfers FINAL
             WHERE (from_address = %(address)s OR to_address = %(address)s)
               AND block_timestamp >= %(start_ts)s AND block_timestamp <= %(end_ts)s
               AND amount > 0
@@ -148,7 +148,7 @@ class TransferRepository(BaseRepository):
                 toDayOfWeek(toDateTime(intDiv(block_timestamp, 1000))) as day_of_week,
                 toDate(toDateTime(intDiv(block_timestamp, 1000))) as date,
                 amount
-            FROM core_transfers
+            FROM core_transfers FINAL
             WHERE (from_address = %(address)s OR to_address = %(address)s)
               AND block_timestamp >= %(start_ts)s AND block_timestamp <= %(end_ts)s
             ORDER BY block_timestamp
@@ -168,7 +168,7 @@ class TransferRepository(BaseRepository):
                 amount,
                 toHour(toDateTime(intDiv(block_timestamp, 1000))) as hour,
                 toDayOfWeek(toDateTime(intDiv(block_timestamp, 1000))) as day_of_week
-            FROM core_transfers
+            FROM core_transfers FINAL
             WHERE (from_address = %(address)s OR to_address = %(address)s)
               AND block_timestamp >= %(start_ts)s AND block_timestamp <= %(end_ts)s
               AND amount > 0
@@ -197,7 +197,7 @@ class TransferRepository(BaseRepository):
                     ELSE to_address
                 END AS address,
                 toFloat64(amount) AS amt
-            FROM core_transfers
+            FROM core_transfers FINAL
             WHERE (from_address IN ({address_list}) OR to_address IN ({address_list}))
               AND block_timestamp >= %(t0)s AND block_timestamp <= %(t1)s
               AND amount > 0
@@ -246,7 +246,7 @@ class TransferRepository(BaseRepository):
                 toFloat64(amount) AS amt,
                 toHour(toDateTime(block_timestamp / 1000)) AS hour_of_day,
                 toDayOfWeek(toDateTime(block_timestamp / 1000)) AS day_of_week
-            FROM core_transfers
+            FROM core_transfers FINAL
             WHERE (from_address IN ({address_list}) OR to_address IN ({address_list}))
               AND block_timestamp >= %(t0)s AND block_timestamp <= %(t1)s
               AND amount > 0
@@ -303,7 +303,7 @@ class TransferRepository(BaseRepository):
                 END AS address,
                 toHour(toDateTime(block_timestamp / 1000)) AS hour_of_day,
                 toFloat64(amount) AS amt
-            FROM core_transfers
+            FROM core_transfers FINAL
             WHERE (from_address IN ({address_list}) OR to_address IN ({address_list}))
               AND block_timestamp >= %(t0)s AND block_timestamp <= %(t1)s
               AND amount > 0
@@ -345,7 +345,7 @@ class TransferRepository(BaseRepository):
             SELECT
                 CASE WHEN from_address IN ({address_list}) THEN from_address ELSE to_address END AS address,
                 toUInt64(block_timestamp) AS ts
-            FROM core_transfers
+            FROM core_transfers FINAL
             WHERE (from_address IN ({address_list}) OR to_address IN ({address_list}))
               AND block_timestamp >= %(t0)s AND block_timestamp <= %(t1)s
         ),
@@ -397,7 +397,7 @@ class TransferRepository(BaseRepository):
             SELECT
                 CASE WHEN from_address IN ({address_list}) THEN from_address ELSE to_address END AS address,
                 toFloat64(amount) AS amt
-            FROM core_transfers
+            FROM core_transfers FINAL
             WHERE (from_address IN ({address_list}) OR to_address IN ({address_list}))
               AND block_timestamp >= %(t0)s AND block_timestamp <= %(t1)s
               AND amount > 0
@@ -444,7 +444,7 @@ class TransferRepository(BaseRepository):
                 asset_contract,
                 amount,
                 fee
-            FROM core_transfers
+            FROM core_transfers FINAL
             WHERE block_timestamp >= %(start_ts)s
               AND block_timestamp < %(end_ts)s
             ORDER BY block_timestamp ASC
